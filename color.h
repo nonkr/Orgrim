@@ -1,6 +1,12 @@
-//
-// Created by songbinbin on 2017/11/28.
-//
+/*
+ * Copyright (c) 2017, Billie Soong <nonkr@hotmail.com>
+ * All rights reserved.
+ *
+ * This file is under GPL, see LICENSE for details.
+ *
+ * Author: Billie Soong <nonkr@hotmail.com>
+ *
+ */
 
 #ifndef CAT_COLOR_H
 #define CAT_COLOR_H
