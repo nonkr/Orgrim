@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "threadpool.h"
+#include "simple_threadpool.h"
 
 threadpool_t *threadpool_init(int thread_num, int queue_max_num)
 {

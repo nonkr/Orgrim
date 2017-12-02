@@ -19,7 +19,7 @@ TARGETS         = hello \
 				  hello_stack \
 				  hello_mutex \
 				  hello_cond \
-				  threadpool_test
+				  simple_threadpool_test
 
 all: $(TARGETS)
 
@@ -41,8 +41,8 @@ hello_mutex: hello_mutex.c
 hello_cond: hello_cond.c
 	$(CC) $(CFLAGS) $(CFLAGS_EXE) $(LIBS_CFLAGS) $^ -o $@ $(LIB_A_COMM) $(LIBS) $(INCLUDES)
 
-threadpool_test: threadpool_test.c threadpool.c threadpool.h
-	$(CC) $(CFLAGS) $(CFLAGS_EXE) $(LIBS_CFLAGS) $^ -o $@ $(LIB_A_COMM) $(LIBS) $(INCLUDES)
+simple_threadpool_test: simple_threadpool_test.c simple_threadpool.c simple_threadpool.h
+	$(CC) $(CFLAGS) $(CFLAGS_EXE) $(LIBS_CFLAGS) $(filter %.c,$^) -o $@ $(LIB_A_COMM) $(LIBS) $(INCLUDES)
 
 clean:
 	find . -name "*.o" | xargs rm -f

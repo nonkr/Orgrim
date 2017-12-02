@@ -1,12 +1,13 @@
-
 #include <stdio.h>
-#include "threadpool.h"
+#include <unistd.h>
+#include "simple_threadpool.h"
 
 void *work(void *arg)
 {
     char *p = (char *) arg;
     printf("threadpool callback fuction : %s.\n", p);
     sleep(1);
+    return NULL;
 }
 
 int main(void)
