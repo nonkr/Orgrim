@@ -18,7 +18,8 @@ TARGETS         = hello \
 				  hello_joinable \
 				  hello_stack \
 				  hello_mutex \
-				  hello_cond
+				  hello_cond \
+				  threadpool_test
 
 all: $(TARGETS)
 
@@ -38,6 +39,9 @@ hello_mutex: hello_mutex.c
 	$(CC) $(CFLAGS) $(CFLAGS_EXE) $(LIBS_CFLAGS) $^ -o $@ $(LIB_A_COMM) $(LIBS) $(INCLUDES)
 
 hello_cond: hello_cond.c
+	$(CC) $(CFLAGS) $(CFLAGS_EXE) $(LIBS_CFLAGS) $^ -o $@ $(LIB_A_COMM) $(LIBS) $(INCLUDES)
+
+threadpool_test: threadpool_test.c threadpool.c threadpool.h
 	$(CC) $(CFLAGS) $(CFLAGS_EXE) $(LIBS_CFLAGS) $^ -o $@ $(LIB_A_COMM) $(LIBS) $(INCLUDES)
 
 clean:
