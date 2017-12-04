@@ -4,3 +4,6 @@
 [submodule "pthread/c/other_threadpool/threadpool"]
 	path = pthread/c/other_threadpool/threadpool
 	url = https://github.com/mbrossard/threadpool.git
+[submodule "references/fast_ring_queue"]
+	path = references/fast_ring_queue
+	url = https://github.com/dodng/fast_ring_queue.git
