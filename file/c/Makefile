@@ -14,7 +14,7 @@ TARGETS         = proc_cmdline
 all: $(TARGETS)
 
 proc_cmdline: proc_cmdline.c
-	$(CC) $(CFLAGS) $^ -o $@ $(LIB_A_COMM) $(LIBS) $(INCLUDES)
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBS) $(INCLUDES)
 
 clean:
 	find . -name "*.o" | xargs rm -f
