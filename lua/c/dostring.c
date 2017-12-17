@@ -28,10 +28,6 @@ int main(void)
 
     stackDump(L);
 
-#if LUA_VERSION_NUM >= 503
-    printf("test\n");
-#endif
-
     lua_close(L);
     return 0;
 }
