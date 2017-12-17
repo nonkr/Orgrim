@@ -60,11 +60,11 @@ static void stackPrettyDump(lua_State *L)
     int top = lua_gettop(L);
 
     printf("There is %d elements in stack: ", top);
-    for (i = 1; i <= top; i++)
+    for (i = top; i >= 1; i--)
     {
-        if (i == 1)
+        if (i == top)
             printf("\n┏━━━━┳━━━━━━━━━━━━━━┳━━━━┓\n");
-        printf("↑ %d  ┃", top - i + 1);
+        printf("↑ %d  ┃", i);
         type = lua_type(L, i);
         switch (type)
         {
@@ -81,8 +81,8 @@ static void stackPrettyDump(lua_State *L)
                 printf("<%s>", lua_typename(L, type));
                 break;
         }
-        printf("\033[21G┃ -%d ↓\n", i);
-        if (i == top)
+        printf("\033[21G┃ -%d ↓\n", top - i + 1);
+        if (i == 1)
             printf("┗━━━━┻━━━━━━━━━━━━━━┻━━━━┛\n");
         else
             printf("┣━━━━╋━━━━━━━━━━━━━━╋━━━━┫\n");
