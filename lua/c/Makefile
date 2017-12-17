@@ -15,7 +15,8 @@ TARGETS         = loadfile \
 				  dostring \
 				  loadbuffer \
 				  callluafunc \
-				  callluatable
+				  callluatable \
+				  myLualib.so
 
 all: $(TARGETS)
 
@@ -39,6 +40,9 @@ callluafunc: callluafunc.c comm.h
 
 callluatable: callluatable.c comm.h
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS) $(INCLUDES)
+
+myLualib.so: myLualib.c
+	$(CC) -shared -fPIC $(CFLAGS) $^ -o $@ $(INCLUDES)
 
 clean:
 	find . -name "*.o" | xargs rm -f
