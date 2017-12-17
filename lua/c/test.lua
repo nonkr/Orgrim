@@ -7,8 +7,10 @@
 -- Author: Billie Soong <nonkr@hotmail.com>
 -- Datetime: 2017/12/17 13:47
 --
-
 local foo = "foo"
+
+os.execute("sleep 3")
+
 print("Hello World " .. foo)
 
 me = {
