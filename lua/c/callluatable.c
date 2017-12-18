@@ -54,7 +54,7 @@ int main(void)
 
     // 压入另一个key:age
     lua_getfield(L, -2, "age");
-    printf("age = %d\n", lua_tointeger(L, -1));
+    printf("age = %lld\n", lua_tointeger(L, -1));
     print_stacknum("stage3", lua_gettop(L));
 
     stackPrettyDump(L);
