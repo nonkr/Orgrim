@@ -9,11 +9,11 @@ LIBS            +=
 
 INCLUDES        = -I.
 
-TARGETS         = struct_pointer_array
+TARGETS         = struct_array_pointer
 
 all: $(TARGETS)
 
-struct_pointer_array: struct_pointer_array.c
+struct_array_pointer: struct_array_pointer.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS) $(INCLUDES)
 
 clean:

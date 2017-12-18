@@ -60,21 +60,19 @@ void printHex(const char *data, int size)
 static void set_children(child *p_children, int num)
 {
     printf("sizeof:[%zd] num:[%d]\n", sizeof(p_children[0]), num);
-
-    memcpy((void *) &p_children[0], arr_children, sizeof(arr_children));
+    memcpy((void *) &p_children[0], &arr_children[0], sizeof(child));
+    memcpy((void *) &p_children[1], &arr_children[1], sizeof(child));
 }
 
 int main()
 {
     int   size = 2;
-    child *p[size];
-    p[0] = (child *) malloc(sizeof(child) * size);
-    memset(p[0], 0x00, sizeof(child) * size);
+    static child pp[2];
 
-    set_children(p[0], size);
+    set_children(pp, size);
 
-    printHex((char *) p[0], sizeof(child));
-    printHex((char *) p[0] + sizeof(child), sizeof(child));
+    printHex((char *) &pp[0], sizeof(child));
+    printHex((char *) &pp[1], sizeof(child));
 
     return 0;
 }
