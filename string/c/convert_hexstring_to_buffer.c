@@ -44,26 +44,24 @@ int hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *p_i_out_len)
 
     for (i = 0; i < i_str_len;)
     {
-        if (isxdigit(p_hexstring[i]) && isxdigit(p_hexstring[i + 1]))
-        {
-            sscanf(p_hexstring + i, "%2x", (unsigned int *) &(p_out[i_offset++]));
-
-            if (i + 2 == i_str_len)
-                break;
-
-            if (p_hexstring[i + 2] != ' ')
-            {
-                fprintf(stderr, "malformed input hex string\n");
-                goto error;
-            }
-
-            i += 3;
-        }
-        else
+        if (isxdigit(p_hexstring[i]) == 0 || isxdigit(p_hexstring[i + 1]) == 0)
         {
             fprintf(stderr, "malformed input hex string\n");
             goto error;
         }
+
+        sscanf(p_hexstring + i, "%2x", (unsigned int *) &(p_out[i_offset++]));
+
+        if (i + 2 == i_str_len)
+            break;
+
+        if (p_hexstring[i + 2] != ' ')
+        {
+            fprintf(stderr, "malformed input hex string\n");
+            goto error;
+        }
+
+        i += 3;
     }
 
     *pp_out      = p_out;
