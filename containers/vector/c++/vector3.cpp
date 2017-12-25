@@ -21,7 +21,6 @@ typedef enum
     NODE_TYPE_FIXED = 10,
     NODE_TYPE_HASHED,
     NODE_TYPE_RANGE,
-    NODE_TYPE_UNKNOWN,
 } NodeValueType;
 
 typedef struct
@@ -37,14 +36,12 @@ typedef struct
     {
         char           cValue;
         vector<char>   *pvValue;
-        NodeRangeValue *stRangeValue;
+        NodeRangeValue *pRangeValue;
     }             Value;
 } NodeValue;
 
-int main()
+void addValue(vector<NodeValue *> *pNodes)
 {
-    vector<NodeValue *> nodes;
-
     // set
     auto *pNodeValue = new NodeValue;
     pNodeValue->eValueType = NODE_TYPE_HASHED;
@@ -52,20 +49,27 @@ int main()
     pvValue->push_back('A');
     pvValue->push_back('B');
     pNodeValue->Value.pvValue = pvValue;
-    nodes.push_back(pNodeValue);
+    pNodes->push_back(pNodeValue);
 
     auto *pNodeValue2 = new NodeValue;
     pNodeValue2->eValueType   = NODE_TYPE_FIXED;
     pNodeValue2->Value.cValue = 'Y';
-    nodes.push_back(pNodeValue2);
+    pNodes->push_back(pNodeValue2);
 
     auto *pNodeValue3 = new NodeValue;
     pNodeValue3->eValueType = NODE_TYPE_RANGE;
     auto *pRangeValue = new NodeRangeValue;
     pRangeValue->cMin = 2;
     pRangeValue->cMax = 5;
-    pNodeValue3->Value.stRangeValue = pRangeValue;
-    nodes.push_back(pNodeValue3);
+    pNodeValue3->Value.pRangeValue = pRangeValue;
+    pNodes->push_back(pNodeValue3);
+}
+
+int main()
+{
+    vector<NodeValue *> nodes;
+
+    addValue(&nodes);
 
     // get
     printf("size:[%zd]\n", nodes.size());
@@ -84,7 +88,7 @@ int main()
                 }
                 break;
             case NODE_TYPE_RANGE:
-                printf("Value:[%d...%d]\n", n->Value.stRangeValue->cMin, n->Value.stRangeValue->cMax);
+                printf("Value:[%d...%d]\n", n->Value.pRangeValue->cMin, n->Value.pRangeValue->cMax);
                 break;
         }
     }
@@ -94,11 +98,13 @@ int main()
     {
         switch (n->eValueType)
         {
+            case NODE_TYPE_FIXED:
+                break;
             case NODE_TYPE_HASHED:
                 delete n->Value.pvValue;
                 break;
             case NODE_TYPE_RANGE:
-                delete n->Value.stRangeValue;
+                delete n->Value.pRangeValue;
                 break;
         }
         delete n;
