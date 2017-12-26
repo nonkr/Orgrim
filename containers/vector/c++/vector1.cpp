@@ -18,7 +18,7 @@ using std::string;
 
 union S
 {
-    string      str;
+    string str;
     vector<int> vec;
 
     ~S() {} // 需要知道哪个成员为活跃，仅在类联合类中可行

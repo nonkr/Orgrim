@@ -34,10 +34,10 @@ typedef struct
     NodeValueType eValueType;
     union
     {
-        char           cValue;
-        vector<char>   *pvValue;
+        char cValue;
+        vector<char> *pvValue;
         NodeRangeValue *pRangeValue;
-    }             Value;
+    } Value;
 } NodeValue;
 
 void addValue(vector<NodeValue *> *pNodes)
@@ -52,7 +52,7 @@ void addValue(vector<NodeValue *> *pNodes)
     pNodes->push_back(pNodeValue);
 
     auto *pNodeValue2 = new NodeValue;
-    pNodeValue2->eValueType   = NODE_TYPE_FIXED;
+    pNodeValue2->eValueType = NODE_TYPE_FIXED;
     pNodeValue2->Value.cValue = 'Y';
     pNodes->push_back(pNodeValue2);
 

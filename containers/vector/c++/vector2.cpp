@@ -17,8 +17,8 @@ using std::string;
 struct subject
 {
     string name;
-    int    marks;
-    int    credits;
+    int marks;
+    int credits;
 };
 
 int main()
@@ -35,7 +35,7 @@ int main()
     sub.emplace_back(subject());
 
     //Modify its name and marks.
-    sub[1].name  = "math";
+    sub[1].name = "math";
     sub[1].marks = 90;
 
     struct subject su;
