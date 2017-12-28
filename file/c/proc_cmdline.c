@@ -8,7 +8,9 @@
  *
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,13 +26,25 @@ int main(int argc, char **argv)
 
     while (getdelim(&arg, &size, 0, cmdline) != -1)
     {
-        puts(arg);
+        printf("[%s]\n", arg);
+        if (strchr(arg, ' ') != NULL)
+        {
+            strcat(cmdstr, "\"");
+        }
         strcat(cmdstr, arg);
-        strcat(cmdstr, " ");
+        if (strchr(arg, ' ') != NULL)
+        {
+            strcat(cmdstr, "\" ");
+        }
+        else
+        {
+            strcat(cmdstr, " ");
+        }
     }
+    fclose(cmdline);
+
     cmdstr[strlen(cmdstr) - 1] = '\0';
     free(arg);
-    fclose(cmdline);
 
     printf("cmdline: [%s]\n", cmdstr);
 
