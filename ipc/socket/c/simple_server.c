@@ -20,7 +20,7 @@
 int main()
 {
     //创建套接字
-    int serv_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    int serv_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     //将套接字和IP、端口绑定
     struct sockaddr_in serv_addr;
