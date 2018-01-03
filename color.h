@@ -23,68 +23,114 @@
 #define KCYAN       "\x1B[0;36m"    // ANSI cyan color
 #define KRESET       "\x1B[0m"       // ANSI reset color
 
-#if CAT_DEBUG
-#define CAT_PRINT(...) printf(__VA_ARGS__)                           // normal printf
-#define CAT_PRINT_DETAIL(...) (printf("[%s:%u, %s()] ",\
-                        __FILE__,__LINE__,__func__),\
-                        printf(__VA_ARGS__))                            // print with detail info
-#define CAT_PRINT_GREEN(...) (printf("[%s:%u, %s()] ",\
-                        __FILE__,__LINE__,__func__),\
-                        printf(KGREEN),\
+#ifdef ORGRIM_DEBUG
+#define OGM_PRINT(...) printf(__VA_ARGS__)
+#define OGM_PRINT_RED(...) (printf(KRED),\
                         printf(__VA_ARGS__),\
-                        printf(KRESET))                                  // print debug info
-#define CAT_PRINT_ORANGE(...) (printf("[%s:%u, %s()] ",\
-                        __FILE__,__LINE__,__func__),\
-                        printf(KORANGE),\
+                        printf(KRESET))
+#define OGM_PRINT_SALMON(...) (printf(KSALMON),\
                         printf(__VA_ARGS__),\
-                        printf(KRESET))                                  // print fatal info
-#define CAT_PRINT_RED(...) (printf("[%s:%u, %s()] ",\
+                        printf(KRESET))
+#define OGM_PRINT_GREEN(...) (printf(KGREEN),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_LIMEGREEN(...) (printf(KLIMEGREEN),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_YELLOW(...) (printf(KYELLOW),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_ORANGE(...) (printf(KORANGE),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_BLUE(...) (printf(KBLUE),\
+                            printf(__VA_ARGS__),\
+                            printf(KRESET))
+#define OGM_PRINT_MAGENTA(...) (printf(KMAGENTA),\
+                            printf(__VA_ARGS__),\
+                            printf(KRESET))
+#define OGM_PRINT_PINK(...) (printf(KPINK),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_CYAN(...) (printf(KCYAN),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_DETAIL(...) (printf("[%s:%u, %s()] ",\
+                        __FILE__,__LINE__,__func__),\
+                        printf(__VA_ARGS__))
+#define OGM_PRINT_RED_DETAIL(...) (printf("[%s:%u, %s()] ",\
                         __FILE__,__LINE__,__func__),\
                         printf(KRED),\
                         printf(__VA_ARGS__),\
-                        printf(KRESET))                                  // print emergent info
-#define CAT_PRINT_SALMON(...) (printf("[%s:%u, %s()] ",\
+                        printf(KRESET))
+#define OGM_PRINT_SALMON_DETAIL(...) (printf("[%s:%u, %s()] ",\
                         __FILE__,__LINE__,__func__),\
                         printf(KSALMON),\
                         printf(__VA_ARGS__),\
-                        printf(KRESET))                                  // print alert info
-#define CAT_PRINT_MAGENTA(...) (printf("[%s:%u, %s()] ",\
-                            __FILE__,__LINE__,__func__),\
-                            printf(KMAGENTA),\
-                            printf(__VA_ARGS__),\
-                            printf(KRESET))                              // print critical info
-#define CAT_PRINT_PINK(...) (printf("[%s:%u, %s()] ",\
+                        printf(KRESET))
+#define OGM_PRINT_GREEN_DETAIL(...) (printf("[%s:%u, %s()] ",\
                         __FILE__,__LINE__,__func__),\
-                        printf(KPINK),\
+                        printf(KGREEN),\
                         printf(__VA_ARGS__),\
-                        printf(KRESET))                                  // print error info
-#define CAT_PRINT_YELLOW(...) (printf("[%s:%u, %s()] ",\
-                        __FILE__,__LINE__,__func__),\
-                        printf(KYELLOW),\
-                        printf(__VA_ARGS__),\
-                        printf(KRESET))                                  // print warning info
-#define CAT_PRINT_LIMEGREEN(...) (printf("[%s:%u, %s()] ",\
+                        printf(KRESET))
+#define OGM_PRINT_LIMEGREEN_DETAIL(...) (printf("[%s:%u, %s()] ",\
                         __FILE__,__LINE__,__func__),\
                         printf(KLIMEGREEN),\
                         printf(__VA_ARGS__),\
-                        printf(KRESET))                                  // print notice info
-#define CAT_PRINT_BLUE(...) (printf("[%s:%u, %s()] ",\
+                        printf(KRESET))
+#define OGM_PRINT_YELLOW_DETAIL(...) (printf("[%s:%u, %s()] ",\
+                        __FILE__,__LINE__,__func__),\
+                        printf(KYELLOW),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_ORANGE_DETAIL(...) (printf("[%s:%u, %s()] ",\
+                        __FILE__,__LINE__,__func__),\
+                        printf(KORANGE),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_BLUE_DETAIL(...) (printf("[%s:%u, %s()] ",\
                             __FILE__,__LINE__,__func__),\
                             printf(KBLUE),\
                             printf(__VA_ARGS__),\
-                            printf(KRESET))                              // print just into
+                            printf(KRESET))
+#define OGM_PRINT_MAGENTA_DETAIL(...) (printf("[%s:%u, %s()] ",\
+                            __FILE__,__LINE__,__func__),\
+                            printf(KMAGENTA),\
+                            printf(__VA_ARGS__),\
+                            printf(KRESET))
+#define OGM_PRINT_PINK_DETAIL(...) (printf("[%s:%u, %s()] ",\
+                        __FILE__,__LINE__,__func__),\
+                        printf(KPINK),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
+#define OGM_PRINT_CYAN_DETAIL(...) (printf("[%s:%u, %s()] ",\
+                        __FILE__,__LINE__,__func__),\
+                        printf(KCYAN),\
+                        printf(__VA_ARGS__),\
+                        printf(KRESET))
 #else
-#define CAT_PRINT(...)
-#define CAT_PRINT_DETAIL(...)
-#define CAT_PRINT_GREEN(...)
-#define CAT_PRINT_ORANGE(...)
-#define CAT_PRINT_RED(...)
-#define CAT_PRINT_SALMON(...)
-#define CAT_PRINT_MAGENTA(...)
-#define CAT_PRINT_PINK(...)
-#define CAT_PRINT_YELLOW(...)
-#define CAT_PRINT_LIMEGREEN(...)
-#define CAT_PRINT_BLUE(...)
+#define OGM_PRINT(...)
+#define OGM_PRINT_RED(...)
+#define OGM_PRINT_SALMON(...)
+#define OGM_PRINT_GREEN(...)
+#define OGM_PRINT_LIMEGREEN(...)
+#define OGM_PRINT_YELLOW(...)
+#define OGM_PRINT_ORANGE(...)
+#define OGM_PRINT_BLUE(...)
+#define OGM_PRINT_MAGENTA(...)
+#define OGM_PRINT_PINK(...)
+#define OGM_PRINT_CYAN(...)
+#define OGM_PRINT_DETAIL(...)
+#define OGM_PRINT_RED_DETAIL(...)
+#define OGM_PRINT_SALMON_DETAIL(...)
+#define OGM_PRINT_GREEN_DETAIL(...)
+#define OGM_PRINT_LIMEGREEN_DETAIL(...)
+#define OGM_PRINT_YELLOW_DETAIL(...)
+#define OGM_PRINT_ORANGE_DETAIL(...)
+#define OGM_PRINT_BLUE_DETAIL(...)
+#define OGM_PRINT_MAGENTA_DETAIL(...)
+#define OGM_PRINT_PINK_DETAIL(...)
+#define OGM_PRINT_CYAN_DETAIL(...)
 #endif
 
 #endif //CAT_COLOR_H
