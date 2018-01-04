@@ -87,7 +87,7 @@ void *watch_count(void *t)
 
 int main(int argc, char *argv[])
 {
-    int            i, rc;
+    int            i;
     long           t1 = 1, t2 = 2, t3 = 3;
     pthread_t      threads[3];
     pthread_attr_t attr;

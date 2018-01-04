@@ -22,6 +22,8 @@ static void bail(lua_State *L)
     exit(1);
 }
 
+static void stackDump(lua_State *L) __attribute__((unused));
+
 static void stackDump(lua_State *L)
 {
     int i = 0;
@@ -53,6 +55,7 @@ static void stackDump(lua_State *L)
     return;
 }
 
+static void stackPrettyDump(lua_State *L) __attribute__((unused));
 static void stackPrettyDump(lua_State *L)
 {
     int i = 0;

@@ -42,7 +42,6 @@ void *PrintHello(void *threadarg)
 int main(int argc, char *argv[])
 {
     pthread_t threads[NUM_THREADS];
-    int       *taskids[NUM_THREADS];
     int       rc, t, sum;
 
     sum = 0;

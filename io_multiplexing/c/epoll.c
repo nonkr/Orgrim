@@ -83,12 +83,12 @@ int main(int argc, char *argv[])
         else if (ret > 0)
         {   // 准备就绪的文件描述符
             char buf[100] = {0};
-            if ((wait_event.data.fd == STDIN_FILENO) && (EPOLLIN == wait_event.events & EPOLLIN))
+            if ((wait_event.data.fd == STDIN_FILENO) && (EPOLLIN == (wait_event.events & EPOLLIN)))
             {   // 标准输入
                 read(0, buf, sizeof(buf));
                 printf("stdin buf = %s\n", buf);
             }
-            else if ((wait_event.data.fd == fd) && (EPOLLIN == wait_event.events & EPOLLIN))
+            else if ((wait_event.data.fd == fd) && (EPOLLIN == (wait_event.events & EPOLLIN)))
             {   // 有名管道
                 read(fd, buf, sizeof(buf));
                 printf("fifo buf = %s\n", buf);

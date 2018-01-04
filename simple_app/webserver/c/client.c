@@ -21,13 +21,13 @@ char *command = "GET /index.html HTTP/1.0 \r\n\r\n";
 
 #define BUFSIZE 8196
 
-pexit(char *msg)
+int pexit(char *msg)
 {
     perror(msg);
     exit(1);
 }
 
-main()
+int main()
 {
     int i, sockfd;
     char buffer[BUFSIZE];
@@ -46,10 +46,12 @@ main()
         pexit("connect() failed");
 
     /* Now the sockfd can be used to communicate to the server the GET request */
-    printf("Send bytes=%d %s\n", strlen(command), command);
+    printf("Send bytes=%zd %s\n", strlen(command), command);
     write(sockfd, command, strlen(command));
 
     /* This displays the raw HTML file (if index.html) as received by the browser */
     while ((i = read(sockfd, buffer, BUFSIZE)) > 0)
         write(1, buffer, i);
+
+    return 0;
 }

@@ -4,7 +4,7 @@
 #*******************************************************************
 
 #COMMON FLAGS
-CFLAGS          += $(CFLAGS_EXT) -Werror
+CFLAGS          += -Werror -g -Wall
 
 LIBS_CFLAGS     = -pthread
 CFLAGS_EXE      =
