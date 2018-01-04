@@ -8,6 +8,7 @@
  * Datetime: 2017/12/28 20:20
  *
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -19,29 +20,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
-
 #include "../../color.h"
 
-static const int PacketHeader = 0xaa;
-static const int INTERVAL     = 0xFF;
-static const int FALSE        = -1;
-static const int TRUE         = 0;
+static const int PacketHeader = 0xAA;
 static const int MAX_LEN      = 1680;  //缓冲区最大长度
-static const int MIN_CMD_LEN  = 4;       // 一个命令的最短长度
 
-static const int ORDERMODELEN       = 15;
-static const int HEAD_BYTE          = 0;
-static const int LEN_BYTE           = 1;
-static const int CMD_BYTE           = 2;
-static const int DATA_BYTE          = 3;
-static const int MAX_CONTROLCMD_NUM = 20;  //最大控制类指令的个数
-
-int speed_arr[]               = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400, B19200,
-                                 B9600, B4800,
-                                 B2400, B1200, B300,};
-int name_arr[]                = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
-                                 2400, 1200,
-                                 300,};
+int speed_arr[]    = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400, B19200,
+                      B9600, B4800,
+                      B2400, B1200, B300,};
+int name_arr[]     = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
+                      2400, 1200,
+                      300,};
 
 typedef unsigned char UINT8;
 
@@ -51,22 +40,51 @@ int  m_nDatabits;
 int  m_nStopbits;
 char m_nParity;
 
-pthread_mutex_t UartSendbuffMutex;
-UINT8           gSend_Buff[1680];
-UINT8           gRecv_Buff[1680];
-int             gSend_Count;
-int             gRecv_Count;
-
 struct
 {
     char buf[1024];
-}               g_send_data[] = {
+}   g_send_data[]             = {
+    // 向前
 //    {"AA 03 02 21 00 23"},
 //    {"AA 03 02 21 00 23"},
 //    {"AA 03 02 21 00 23"},
 //    {"AA 03 02 21 00 23"},
 //    {"AA 03 02 21 00 23"},
 //    {"AA 03 02 21 00 23"},
+
+    // 自动清扫
+//    {"AA 03 02 22 02 26"},
+//    {"AA 03 02 22 02 26"},
+//    {"AA 03 02 22 02 26"},
+//    {"AA 03 02 22 02 26"},
+//    {"AA 03 02 22 02 26"},
+//    {"AA 03 02 22 02 26"},
+
+//    {"AA 01 01 01"},
+//    {"AA 03 02 10 00 12"},
+//    {"AA 03 02 10 01 13"},
+//    {"AA 03 02 21 00 23"},
+//    {"AA 03 02 21 01 24"},
+//    {"AA 03 02 21 02 25"},
+//    {"AA 03 02 21 03 26"},
+//    {"AA 03 02 22 00 24"},
+//    {"AA 03 02 22 01 25"},
+//    {"AA 03 02 22 02 26"},
+//    {"AA 03 02 22 03 27"},
+//    {"AA 03 02 32 01 35"},
+//    {"AA 03 02 32 02 36"},
+
+    // 海康板主动查询
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
+    {"AA 01 06 06"},
     {"AA 01 06 06"},
     {"AA 01 06 06"},
     {"AA 01 06 06"},
@@ -78,7 +96,7 @@ struct
 };
 
 
-static int Usart_SetSpeed()
+static int set_speed()
 {
     UINT8          i;
     int            status;
@@ -103,7 +121,7 @@ static int Usart_SetSpeed()
     return 0;
 }
 
-static int Usart_SetOpt()
+static int set_Parity()
 {
     struct termios options;
     if (tcgetattr(m_Usartfd, &options) != 0)
@@ -165,10 +183,11 @@ static int Usart_SetOpt()
             return -1;
     }
 
-//    options.c_lflag &= ~(ICANON | ISIG);
-//    options.c_iflag &= ~(ICRNL | IGNCR);
     options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /*Input*/
     options.c_oflag &= ~OPOST;                          /*Output*/
+
+    // reference: https://linux.die.net/man/3/cfmakeraw
+    options.c_iflag &= ~IXON; // Enable XON/XOFF flow control on output.
 
     /* Set input parity option */
     if (m_nParity != 'n')
@@ -260,7 +279,6 @@ void print_as_hexstring(const char *pData, int iDataLen)
         {
             if ((check_sum & 0xFF) != (pData[i] & 0xFF))
             {
-//                OGM_PRINT_RED("[%02X:%02X] [%02X:%02X]", check_sum, pData[i], check_sum & 0xFF, pData[i] & 0xFF);
                 OGM_PRINT_RED("%02X", pData[i] & 0xFF);
             }
             else
@@ -309,27 +327,30 @@ void *SendThread(void *arg)
 
     i_g_send_data_num = sizeof(g_send_data) / sizeof(g_send_data[0]);
     printf("i_g_send_data_num:[%d]\n", i_g_send_data_num);
-    for (i = 0; i < i_g_send_data_num; i++)
+    while (1)
     {
-        if (hexstring_to_bytearray(g_send_data[i].buf, &pSendData, &iSendDataLen))
+        for (i = 0; i < i_g_send_data_num; i++)
         {
-            perror("HexStringToBytearray failed\n");
-            pthread_exit((void *) 0);
+            if (hexstring_to_bytearray(g_send_data[i].buf, &pSendData, &iSendDataLen))
+            {
+                perror("HexStringToBytearray failed\n");
+                pthread_exit((void *) 0);
+            }
+
+            OGM_PRINT_GREEN("Send: [");
+            print_as_hexstring(pSendData, iSendDataLen);
+            OGM_PRINT_GREEN("]\n");
+
+            write(m_Usartfd, pSendData, iSendDataLen);
+
+            if (pSendData)
+            {
+                free(pSendData);
+                pSendData = NULL;
+            }
+
+            sleep(3);
         }
-
-        OGM_PRINT_GREEN("Send:[");
-        print_as_hexstring(pSendData, iSendDataLen);
-        OGM_PRINT_GREEN("]\n");
-
-        write(m_Usartfd, pSendData, iSendDataLen);
-
-        if (pSendData)
-        {
-            free(pSendData);
-            pSendData = NULL;
-        }
-
-        sleep(3);
     }
     pthread_exit((void *) 0);
 }
@@ -345,118 +366,100 @@ void *RecvThread(void *arg)
 
     printf("RecvThread...\n");
 
-    int nread;
-
     while (1)
     {
-        while ((nread = read(m_Usartfd, buf, 512)) > 0)
+        FD_ZERO(&rd);
+        FD_SET(m_Usartfd, &rd);
+        memset(buf, 0, sizeof(buf));
+        while (FD_ISSET(m_Usartfd, &rd))
         {
-            printf("\nLen %d\n", nread);
-            buf[nread + 1] = '\0';
-            OGM_PRINT_CYAN("Rply:[");
-            print_as_hexstring((char *) buf, nread + 1);
-            OGM_PRINT_CYAN("]\n");
-        }
-
-//        FD_ZERO(&rd);
-//        FD_SET(m_Usartfd, &rd);
-//        memset(buf, 0, sizeof(buf));
-//        while (FD_ISSET(m_Usartfd, &rd))
-//        {
-//            if (select(m_Usartfd + 1, &rd, NULL, NULL, NULL) < 0)
-//            {
-//                perror("select error\n");
-//            }
-//            else
-//            {
+            if (select(m_Usartfd + 1, &rd, NULL, NULL, NULL) < 0)
+            {
+                perror("select error\n");
+            }
+            else
+            {
 //                iReadLen = read(m_Usartfd, buf, MAX_LEN);
 //                OGM_PRINT_ORANGE("read_len:[%d]\n", iReadLen);
-//                OGM_PRINT_CYAN("Rply:[");
+//                OGM_PRINT_ORANGE("Reply:[");
 //                print_as_hexstring((char *) buf, iReadLen);
-//                OGM_PRINT_CYAN("]\n");
-//
-////                if (state == 0)
-////                {
-////                    iReadLen = read(m_Usartfd, buf, 1);
-////                    if (iReadLen == 1 && (*(buf) & 0xFF) == PacketHeader)
-////                    {
-////                        state = 1;
-////                        recv_len += iReadLen;
-////                    }
-////                    else
-////                    {
-////                        printf("Reply: [%02X]\n", *(buf));
-////                    }
-////                }
-////                else if (state == 1)
-////                {
-////                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
-////                    if (iReadLen == 1)
-////                    {
-////                        state    = 2;
-////                        len_temp = *(buf + recv_len) + 1;
-////                        recv_len += iReadLen;
-////                    }
-////                }
-////                else if (state == 2)
-////                {
-////                    static int last = 0;
-////                    iReadLen = read(m_Usartfd, buf + recv_len + last, len_temp - last);
-////                    if (iReadLen < (len_temp - last) && iReadLen > 0)
-////                    {
-////                        last += iReadLen;
-////                    }
-////                    else
-////                    {
-////                        recv_len += len_temp;
-////                        state = 3;
-////                        last  = 0;
-////                    }
-////                }
-////                else if (state == 3)
-////                {
-////                    state = 0;
-////                    OGM_PRINT_CYAN("Rply:[");
-////                    print_as_hexstring((char *) buf, recv_len);
-////                    OGM_PRINT_CYAN("]\n");
-////                    recv_len = 0;
-////                }
-//            }
-//        }
+//                OGM_PRINT_ORANGE("]\n\n");
+
+                if (state == 0)
+                {
+                    iReadLen = read(m_Usartfd, buf, 1);
+                    if (iReadLen == 1 && (*(buf) & 0xFF) == PacketHeader)
+                    {
+                        state = 1;
+                        recv_len += iReadLen;
+                    }
+                }
+                else if (state == 1)
+                {
+                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
+                    if (iReadLen == 1)
+                    {
+                        state    = 2;
+                        len_temp = *(buf + recv_len) + 1;
+                        recv_len += iReadLen;
+                    }
+                }
+                else
+                {
+                    static int last = 0;
+                    iReadLen = read(m_Usartfd, buf + recv_len + last, len_temp - last);
+                    if (iReadLen < (len_temp - last) && iReadLen > 0)
+                    {
+                        last += iReadLen;
+                    }
+                    else
+                    {
+                        recv_len += len_temp;
+                        last  = 0;
+
+                        state = 0;
+                        OGM_PRINT_ORANGE("Rply:[");
+                        print_as_hexstring((char *) buf, recv_len);
+                        OGM_PRINT_ORANGE("]\n");
+                        recv_len = 0;
+                    }
+                }
+            }
+        }
     }
     pthread_exit((void *) 0);
 }
 
-int main()
+int main(int argc, char **argv)
 {
-    char *m_pt_tty = "/dev/ttyUSB0";
-    m_Usartfd   = -1;
+    m_Usartfd = -1;
     m_nSpeed    = 115200;
     m_nDatabits = 8;
     m_nStopbits = 1;
     m_nParity   = 'n';
 
-    m_Usartfd = open(m_pt_tty, O_RDWR);
+    if (argc < 2)
+    {
+        printf("Usage: %s /dev/ttyS1\n", argv[0]);
+        exit(2);
+    }
+
+    m_Usartfd = open(argv[1], O_RDWR | O_NOCTTY | O_NDELAY);
     if (m_Usartfd == -1)
     {
         perror("can't open serial port,UsartInit failed!");
         return -1;
     }
-    if (Usart_SetSpeed() < 0)
+    if (set_speed() < 0)
     {
-        printf("Usart_SetSpeed failed!\n");
+        printf("set_speed failed!\n");
         return -1;
     }
-    if (Usart_SetOpt() < 0)
+    if (set_Parity() < 0)
     {
-        printf("Usart_SetOpt failed!\n");
+        printf("set_Parity failed!\n");
         return -1;
     }
-
-    gSend_Count = 0;
-    memset(gSend_Buff, 0, sizeof(gSend_Buff));
-    gRecv_Count = 0;
-    memset(gRecv_Buff, 0, sizeof(gRecv_Buff));
 
     pthread_t TxID;
     pthread_t RxID;

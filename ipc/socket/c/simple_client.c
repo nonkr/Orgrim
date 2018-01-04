@@ -19,7 +19,7 @@
 int main()
 {
     //创建套接字
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    int sock = socket(PF_INET, SOCK_STREAM, 0);
 
     //向服务器（特定的IP和端口）发起请求
     struct sockaddr_in serv_addr;

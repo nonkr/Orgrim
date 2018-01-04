@@ -13,6 +13,6 @@
 
 #include <stdio.h>
 
-#define CAT_DEBUG 1              // Debug switch
+#define ORGRIM_DEBUG 1              // Debug switch
 
 #endif //CAT_MAIN_H
