@@ -186,6 +186,7 @@ static int set_Parity()
     options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /*Input*/
     options.c_oflag &= ~OPOST;                          /*Output*/
 
+    // reference: https://linux.die.net/man/3/cfmakeraw
     options.c_iflag &= ~IXON; // Enable XON/XOFF flow control on output.
 
     /* Set input parity option */
