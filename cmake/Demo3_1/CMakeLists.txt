@@ -14,7 +14,7 @@ aux_source_directory(. DIR_SRCS)
 
 # 2.1 方式二
 # 添加链接库
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/math/build)
+link_directories(${PROJECT_SOURCE_DIR}/math/build)
 
 # 指定生成目标
 add_executable(Demo ${DIR_SRCS})
