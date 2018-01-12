@@ -3,4 +3,7 @@
 aux_source_directory(. DIR_LIB_SRCS)
 
 # 指定生成 MathFunctions 链接库
-add_library(MathFunctions ${DIR_LIB_SRCS})
+# 生成静态库，可以不加STATIC，默认就是
+add_library(MathFunctions STATIC ${DIR_LIB_SRCS})
+# 生成动态库
+#add_library(MathFunctions SHARED ${DIR_LIB_SRCS})
