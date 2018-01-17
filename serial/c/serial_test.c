@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <signal.h>
 #include "../../color.h"
 
 static const int PacketHeader = 0xAA;
@@ -323,6 +324,8 @@ void *SendThread(void *arg)
     int  i_g_send_data_num;
     int  i;
 
+    printf("SendThread...\n");
+
     sleep(1);
 
     i_g_send_data_num = sizeof(g_send_data) / sizeof(g_send_data[0]);
@@ -430,6 +433,12 @@ void *RecvThread(void *arg)
     pthread_exit((void *) 0);
 }
 
+void signal_handler(int signum)
+{
+    printf("Interrupt signal (%d) received.\n", signum);
+    exit(signum);
+}
+
 int main(int argc, char **argv)
 {
     m_Usartfd = -1;
@@ -478,6 +487,8 @@ int main(int argc, char **argv)
         printf("pthread_create SendThread failed\n");
         exit(-1);
     }
+
+    signal(SIGINT, signal_handler);
 
     pthread_join(TxID, NULL);
     pthread_join(RxID, NULL);

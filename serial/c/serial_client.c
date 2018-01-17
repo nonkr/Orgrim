@@ -16,7 +16,14 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <memory.h>
+
 #include "../../color.h"
+
+extern HIST_ENTRY **history_list();
 
 void SignalHandler(int signum)
 {
@@ -41,31 +48,77 @@ int main()
     serv_addr.sin_port        = htons(4433);  //端口
     connect(sock_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
 
-    while (1)
+    char *temp = NULL;
+    int done = 0;
+    while (!done)
     {
-        char   *line = NULL;
-        size_t size;
-        if (getline(&line, &size, stdin) == -1)
+        temp = readline("readline$ ");
+
+        /* Test for EOF. */
+        if (!temp)
         {
-            OGM_PRINT_ORANGE("no line\n");
+            exit(1);
         }
-        else
+
+        /* If there is anything on the line, print it and remember it. */
+        if (*temp)
         {
-            line[strlen(line) - 1] = '\0';
-            if (!strcmp(line, "quit"))
+            fprintf(stderr, "%s\n", temp);
+            if (write(sock_fd, temp, strlen(temp)) < 0)
             {
-                break;
+                perror("write");
+                return -1;
             }
-            else
+            add_history(temp);
+        }
+
+        /* Check for `command' that we handle. */
+        if (strcmp(temp, "quit") == 0)
+        {
+            done = 1;
+        }
+        else if (strcmp(temp, "list") == 0)
+        {
+            HIST_ENTRY **list;
+            register int i;
+            list = history_list();
+            if (list)
             {
-                if (write(sock_fd, line, strlen(line)) < 0)
+                for (i = 0; list[i]; i++)
                 {
-                    perror("write");
-                    return -1;
+                    fprintf(stderr, "%d: %s\n", i, list[i]->line);
                 }
             }
         }
+
+        free(temp);
     }
+
+//    while (1)
+//    {
+//        char   *line = NULL;
+//        size_t size;
+//        if (getline(&line, &size, stdin) == -1)
+//        {
+//            OGM_PRINT_ORANGE("no line\n");
+//        }
+//        else
+//        {
+//            line[strlen(line) - 1] = '\0';
+//            if (!strcmp(line, "quit"))
+//            {
+//                break;
+//            }
+//            else
+//            {
+//                if (write(sock_fd, line, strlen(line)) < 0)
+//                {
+//                    perror("write");
+//                    return -1;
+//                }
+//            }
+//        }
+//    }
 
     //关闭套接字
     close(sock_fd);
