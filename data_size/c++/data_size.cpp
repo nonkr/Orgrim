@@ -28,5 +28,6 @@ int main(int argc, char *argv[])
 
     printf("size of streampos:[%zu]\n", sizeof(streampos));
     printf("size of streamsize:[%zu]\n", sizeof(streamsize));
+    printf("size of streamoff:[%zu]\n", sizeof(streamoff));
     return 0;
 }
