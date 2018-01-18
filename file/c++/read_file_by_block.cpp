@@ -46,14 +46,14 @@ int main(int argc, char *argv[])
     {
         memset(buff, 0x00, (size_t) block_size);
         readSize = fp.read(buff, block_size).gcount();
-        buffLeft = size - (int) fp.tellg();
-        printf("readSize:[%d] buffLeft:[%d]\n", readSize, buffLeft);
-        printf("[[%s]]\n", buff);
-
         if (fp.eof())
         {
             break;
         }
+
+        buffLeft = size - (int) fp.tellg();
+        printf("readSize:[%d] buffLeft:[%d]\n", readSize, buffLeft);
+        printf("[[%s]]\n", buff);
     }
 
     fp.close();
