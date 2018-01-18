@@ -36,7 +36,7 @@ int main()
         /* If there is anything on the line, print it and remember it. */
         if (*temp)
         {
-            fprintf(stderr, "%s\r\n", temp);
+            fprintf(stderr, "%s\n", temp);
             add_history(temp);
         }
 
@@ -54,7 +54,7 @@ int main()
             {
                 for (i = 0; list[i]; i++)
                 {
-                    fprintf(stderr, "%d: %s\r\n", i, list[i]->line);
+                    fprintf(stderr, "%d: %s\n", i, list[i]->line);
                 }
             }
         }
