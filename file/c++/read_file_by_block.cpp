@@ -42,18 +42,16 @@ int main(int argc, char *argv[])
     printf("file size:[%d]\n", size);
 
     fp.seekg(0, ios::beg);
-    while (true)
+    while (!fp.eof())
     {
         memset(buff, 0x00, (size_t) block_size);
         readSize = fp.read(buff, block_size).gcount();
-        if (fp.eof())
+        if (readSize > 0)
         {
-            break;
+            buffLeft = size - (int) fp.tellg();
+            printf("readSize:[%d] buffLeft:[%d]\n", readSize, buffLeft);
+            printf("[[%s]]\n", buff);
         }
-
-        buffLeft = size - (int) fp.tellg();
-        printf("readSize:[%d] buffLeft:[%d]\n", readSize, buffLeft);
-        printf("[[%s]]\n", buff);
     }
 
     fp.close();
