@@ -11,6 +11,9 @@
 
 #include <cstdio>
 #include <cstring>
+#include "../../color.h"
+
+#define FOO_SIZE 4
 
 void printHex(const char *data, int size)
 {
@@ -22,9 +25,35 @@ void printHex(const char *data, int size)
     printf("\n");
 }
 
+void local_variable()
+{
+    OGM_PRINT_BLUE("local_variable...\n");
+    char foo[FOO_SIZE];
+
+    printHex(foo, sizeof(foo));
+
+    foo[0] = 0x01;
+
+    printHex(foo, sizeof(foo));
+}
+
+void local_variable_with_memset()
+{
+    OGM_PRINT_BLUE("local_variable_with_memset...\n");
+    char foo[FOO_SIZE];
+    memset(foo, 0, sizeof(foo));
+
+    printHex(foo, sizeof(foo));
+
+    foo[0] = 0x01;
+
+    printHex(foo, sizeof(foo));
+}
+
 void local_static()
 {
-    static char foo[8];
+    OGM_PRINT_BLUE("local_static...\n");
+    static char foo[FOO_SIZE];
 
     printHex(foo, sizeof(foo));
 
@@ -35,7 +64,8 @@ void local_static()
 
 void local_static_with_memset()
 {
-    static char foo[8];
+    OGM_PRINT_BLUE("local_static_with_memset...\n");
+    static char foo[FOO_SIZE];
     memset(foo, 0, sizeof(foo));
 
     printHex(foo, sizeof(foo));
@@ -47,6 +77,12 @@ void local_static_with_memset()
 
 int main()
 {
+    local_variable();
+    local_variable();
+
+    local_variable_with_memset();
+    local_variable_with_memset();
+
     local_static();
     local_static();
 
