@@ -42,6 +42,7 @@ int hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *p_i_out_len)
     if (p_out == NULL)
         return -1;
 
+    unsigned int ui_tmp = 0;
     for (i = 0; i < i_str_len;)
     {
         if (isxdigit(p_hexstring[i]) == 0 || isxdigit(p_hexstring[i + 1]) == 0)
@@ -50,7 +51,8 @@ int hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *p_i_out_len)
             goto error;
         }
 
-        sscanf(p_hexstring + i, "%2x", (unsigned int *) &(p_out[i_offset++]));
+        sscanf(p_hexstring + i, "%2x", &ui_tmp);
+        p_out[i_offset++] = (char ) ui_tmp;
 
         if (i + 2 == i_str_len)
             break;
