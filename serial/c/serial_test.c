@@ -44,7 +44,7 @@ char m_nParity;
 struct
 {
     char buf[1024];
-}   g_send_data[]             = {
+}    g_send_data[] = {
     // 向前
 //    {"AA 03 02 21 00 23"},
 //    {"AA 03 02 21 00 23"},
@@ -76,24 +76,26 @@ struct
 //    {"AA 03 02 32 02 36"},
 
     // 海康板主动查询
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
-    {"AA 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+//    {"AA 00 01 06 06"},
+
+    {"AA 00 01 83 83"},
 };
 
 
@@ -271,7 +273,7 @@ void print_as_hexstring(const char *pData, int iDataLen)
 
     for (i = 0; i < iDataLen; i++)
     {
-        if (i >= 2 && i < iDataLen - 1)
+        if (i >= 3 && i < iDataLen - 1)
         {
             check_sum += pData[i] & 0xFF;
         }
@@ -291,15 +293,15 @@ void print_as_hexstring(const char *pData, int iDataLen)
         {
             OGM_PRINT_LIMEGREEN("%02X ", pData[i] & 0xFF);
         }
-        else if (i == 1)
+        else if (i == 1 || i == 2)
         {
             OGM_PRINT_ORANGE("%02X ", pData[i] & 0xFF);
         }
-        else if (i == 2)
+        else if (i == 3)
         {
             OGM_PRINT_BLUE("%02X ", pData[i] & 0xFF);
         }
-        else if (i == 3)
+        else if (i == 4)
         {
             switch (pData[2] & 0xFF)
             {
@@ -399,11 +401,11 @@ void *RecvThread(void *arg)
                 }
                 else if (state == 1)
                 {
-                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
-                    if (iReadLen == 1)
+                    iReadLen = read(m_Usartfd, buf + recv_len, 2);
+                    if (iReadLen == 2)
                     {
                         state    = 2;
-                        len_temp = *(buf + recv_len) + 1;
+                        len_temp = (*(buf + recv_len) << 8) + *(buf + recv_len + 1) + 1;
                         recv_len += iReadLen;
                     }
                 }
@@ -418,7 +420,7 @@ void *RecvThread(void *arg)
                     else
                     {
                         recv_len += len_temp;
-                        last  = 0;
+                        last = 0;
 
                         state = 0;
                         OGM_PRINT_ORANGE("Rply:[");
@@ -436,12 +438,13 @@ void *RecvThread(void *arg)
 void signal_handler(int signum)
 {
     printf("Interrupt signal (%d) received.\n", signum);
+    close(m_Usartfd);
     exit(signum);
 }
 
 int main(int argc, char **argv)
 {
-    m_Usartfd = -1;
+    m_Usartfd   = -1;
     m_nSpeed    = 115200;
     m_nDatabits = 8;
     m_nStopbits = 1;

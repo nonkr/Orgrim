@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <signal.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -224,7 +225,7 @@ void print_as_hexstring(const char *pData, int iDataLen)
 
     for (i = 0; i < iDataLen; i++)
     {
-        if (i >= 2 && i < iDataLen - 1)
+        if (i >= 3 && i < iDataLen - 1)
         {
             check_sum += pData[i] & 0xFF;
         }
@@ -244,15 +245,15 @@ void print_as_hexstring(const char *pData, int iDataLen)
         {
             OGM_PRINT_LIMEGREEN("%02X ", pData[i] & 0xFF);
         }
-        else if (i == 1)
+        else if (i == 1 || i == 2)
         {
             OGM_PRINT_ORANGE("%02X ", pData[i] & 0xFF);
         }
-        else if (i == 2)
+        else if (i == 3)
         {
             OGM_PRINT_BLUE("%02X ", pData[i] & 0xFF);
         }
-        else if (i == 3)
+        else if (i == 4)
         {
             switch (pData[2] & 0xFF)
             {
@@ -293,9 +294,7 @@ void *SendThread(void *arg)
         }
         else
         {
-            printf("before write\n");
             writeLen = write(m_Usartfd, g_sendbuff, g_sendbuff_len);
-            printf("after write len:[%d]\n", writeLen);
 
             if (writeLen < 0)
             {
@@ -370,11 +369,11 @@ void *RecvThread(void *arg)
                 }
                 else if (state == 1)
                 {
-                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
-                    if (iReadLen == 1)
+                    iReadLen = read(m_Usartfd, buf + recv_len, 2);
+                    if (iReadLen == 2)
                     {
                         state    = 2;
-                        len_temp = *(buf + recv_len) + 1;
+                        len_temp = (*(buf + recv_len) << 8) + *(buf + recv_len + 1) + 1;
                         recv_len += iReadLen;
                     }
                 }
@@ -475,6 +474,13 @@ void *ServerSocketThread(void *arg)
     pthread_exit((void *) 0);
 }
 
+void signal_handler(int signum)
+{
+    printf("Interrupt signal (%d) received.\n", signum);
+    close(m_Usartfd);
+    exit(signum);
+}
+
 int main(int argc, char **argv)
 {
     m_Usartfd   = -1;
@@ -534,6 +540,8 @@ int main(int argc, char **argv)
         printf("pthread_create ServerSocketThread failed\n");
         exit(-1);
     }
+
+    signal(SIGINT, signal_handler);
 
     pthread_join(RxID, NULL);
     pthread_join(TxID, NULL);

@@ -52,7 +52,7 @@ int main()
     int done = 0;
     while (!done)
     {
-        temp = readline("readline$ ");
+        temp = readline("> ");
 
         /* Test for EOF. */
         if (!temp)
