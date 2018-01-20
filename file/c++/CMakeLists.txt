@@ -8,3 +8,4 @@ add_definitions(-std=c++11)
 
 add_executable(read_file_line_by_line read_file_line_by_line.cpp)
 add_executable(read_file_by_block read_file_by_block.cpp)
+add_executable(read_file_by_block2 read_file_by_block2.cpp)
