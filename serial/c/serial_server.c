@@ -142,7 +142,7 @@ static int set_Parity()
     options.c_oflag &= ~OPOST;                          /*Output*/
 
     // reference: https://linux.die.net/man/3/cfmakeraw
-    options.c_iflag &= ~IXON; // Enable XON/XOFF flow control on output.
+    cfmakeraw(&options);
 
     /* Set input parity option */
     if (m_nParity != 'n')
@@ -370,10 +370,26 @@ void *RecvThread(void *arg)
                 else if (state == 1)
                 {
                     iReadLen = read(m_Usartfd, buf + recv_len, 2);
-                    if (iReadLen == 2)
+                    if (iReadLen == 1)
                     {
                         state    = 2;
+                        len_temp = (*(buf + recv_len) << 8);
+                        recv_len += iReadLen;
+                    }
+                    else if (iReadLen == 2)
+                    {
+                        state    = 3;
                         len_temp = (*(buf + recv_len) << 8) + *(buf + recv_len + 1) + 1;
+                        recv_len += iReadLen;
+                    }
+                }
+                else if (state == 2)
+                {
+                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
+                    if (iReadLen == 1)
+                    {
+                        state    = 3;
+                        len_temp += *(buf + recv_len) + 1;
                         recv_len += iReadLen;
                     }
                 }
