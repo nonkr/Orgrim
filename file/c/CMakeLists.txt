@@ -5,3 +5,5 @@ project(c_file)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
 
 add_executable(proc_cmdline proc_cmdline.c)
+add_executable(read_file_total read_file_total.c)
+add_executable(read_file_by_block read_file_by_block.c)
