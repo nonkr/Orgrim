@@ -6,5 +6,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
 
 add_executable(clock_t clock_t.c)
+add_executable(clock_t_macros clock_t_macros.c)
 
 target_link_libraries(clock_t m)
+target_link_libraries(clock_t_macros m)
