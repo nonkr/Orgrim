@@ -26,10 +26,10 @@
 static const int PacketHeader = 0xAA;
 static const int MAX_LEN      = 1680;  //缓冲区最大长度
 
-int speed_arr[]    = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400, B19200,
+int speed_arr[]    = {B1500000, B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400, B19200,
                       B9600, B4800,
                       B2400, B1200, B300,};
-int name_arr[]     = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
+int name_arr[]     = {1500000, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
                       2400, 1200,
                       300,};
 
@@ -43,7 +43,7 @@ char m_nParity;
 
 struct
 {
-    char buf[1024];
+    char buf[4096];
 }    g_send_data[] = {
     // 向前
 //    {"AA 03 02 21 00 23"},
@@ -190,7 +190,7 @@ static int set_Parity()
     options.c_oflag &= ~OPOST;                          /*Output*/
 
     // reference: https://linux.die.net/man/3/cfmakeraw
-    options.c_iflag &= ~IXON; // Enable XON/XOFF flow control on output.
+    cfmakeraw(&options);
 
     /* Set input parity option */
     if (m_nParity != 'n')
@@ -342,9 +342,10 @@ void *SendThread(void *arg)
                 pthread_exit((void *) 0);
             }
 
-            OGM_PRINT_GREEN("Send: [");
-            print_as_hexstring(pSendData, iSendDataLen);
-            OGM_PRINT_GREEN("]\n");
+            OGM_PRINT_GREEN("Send Len:[%d]\n", iSendDataLen);
+//            OGM_PRINT_GREEN("Send: [");
+//            print_as_hexstring(pSendData, iSendDataLen);
+//            OGM_PRINT_GREEN("]\n");
 
             write(m_Usartfd, pSendData, iSendDataLen);
 
@@ -402,10 +403,26 @@ void *RecvThread(void *arg)
                 else if (state == 1)
                 {
                     iReadLen = read(m_Usartfd, buf + recv_len, 2);
-                    if (iReadLen == 2)
+                    if (iReadLen == 1)
                     {
                         state    = 2;
+                        len_temp = (*(buf + recv_len) << 8);
+                        recv_len += iReadLen;
+                    }
+                    else if (iReadLen == 2)
+                    {
+                        state    = 3;
                         len_temp = (*(buf + recv_len) << 8) + *(buf + recv_len + 1) + 1;
+                        recv_len += iReadLen;
+                    }
+                }
+                else if (state == 2)
+                {
+                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
+                    if (iReadLen == 1)
+                    {
+                        state    = 3;
+                        len_temp += *(buf + recv_len) + 1;
                         recv_len += iReadLen;
                     }
                 }
