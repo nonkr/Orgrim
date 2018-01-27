@@ -21,24 +21,70 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <signal.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include "../../color.h"
 
-#define MAX_SENDBUFF_LEN (1025 * 16)
-#define MAX_SOCKET_READ_LEN (MAX_SENDBUFF_LEN * 3)
 static const int PacketHeader = 0xAA;
-static const int MAX_LEN      = MAX_SENDBUFF_LEN;  //缓冲区最大长度
+static const int MAX_LEN      = 1680;  //缓冲区最大长度
 
-int speed_arr[]                = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400, B19200,
-                                  B9600, B4800,
-                                  B2400, B1200, B300,};
-int name_arr[]                 = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
-                                  2400, 1200,
-                                  300,};
+int speed_arr[]                   = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400, B19200,
+                                     B9600, B4800,
+                                     B2400, B1200, B300,};
+int name_arr[]                    = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
+                                     2400, 1200,
+                                     300,};
 
 typedef unsigned char UINT8;
+
+#define CRC_TABLE_SIZE 256
+#define CRC_GEN_POLY   0x8005
+static unsigned int m_CRCTable[CRC_TABLE_SIZE];
+
+
+void BuildCRC16TableFor8813(unsigned int genPoly)
+{
+    OGM_PRINT_BLUE("BuildCRC16TableFor8813...\n");
+    unsigned int  i, j, nData;
+    unsigned long crc;
+
+    for (i = 0; i < CRC_TABLE_SIZE; i++)
+    {
+        nData  = i << 8;
+        crc    = 0;
+        for (j = 0; j < 8; j++)
+        {
+            if ((nData ^ crc) & 0x8000)
+                crc = (crc << 1) ^ genPoly;
+            else
+                crc <<= 1;
+            nData <<= 1;
+        }
+        *(m_CRCTable + i) = crc & 0xFFFF;
+    }
+}
+
+unsigned int BlockCRC16TableFor8813(const unsigned char *Block, unsigned int Len,
+                                    unsigned int seed, unsigned int data_cmpl)
+{
+    unsigned int  CRC;
+    unsigned char data;
+    unsigned int i;
+    CRC = seed;
+    for (i = 0; i < Len; i++)
+    {
+        data = (*Block++);
+        if (data_cmpl)
+        {
+            data = ~data;
+        }
+        CRC  = ((CRC << 8) & 0xFFFF) ^ (*(m_CRCTable + ((CRC >> 8) ^ data)));
+    }
+    return CRC;
+}
+
+unsigned int GenCRC(const unsigned char *Block, unsigned int Len)
+{
+    return BlockCRC16TableFor8813(Block, Len, 0, 0);
+}
 
 int  m_Usartfd;
 int  m_nSpeed;
@@ -46,10 +92,10 @@ int  m_nDatabits;
 int  m_nStopbits;
 char m_nParity;
 
-pthread_mutex_t g_mutex_sendbuff;
-pthread_cond_t  g_cond_sendbuff;
-static int      g_sendbuff_len = 0;
-static char     g_sendbuff[MAX_SENDBUFF_LEN];
+static char     g_SendBuffer[1024];
+static int      g_SendBufferCount = 0;
+pthread_mutex_t g_SendBuffer_Mutex;
+pthread_cond_t  g_SendBuffer_Cond;
 
 static int set_speed()
 {
@@ -271,58 +317,105 @@ void print_as_hexstring(const char *pData, int iDataLen)
     }
 }
 
-void *SendThread(void *arg)
+void ProcessRecvBuffer(const char *pBuff, const unsigned int uiBuffLen)
 {
-    int         writeLen;
-    static char tmpbuff[MAX_SOCKET_READ_LEN];
+    OGM_PRINT_ORANGE("Recv:[");
+    print_as_hexstring(pBuff, uiBuffLen);
+    OGM_PRINT_ORANGE("]\n");
 
-    while (1)
+    int iCRCRecv = 0;
+    int iCRCCalc = 0;
+
+    if (uiBuffLen < 5)
     {
-        pthread_mutex_lock(&g_mutex_sendbuff);
+        OGM_PRINT_RED("Malformed received data\n");
+        return;
+    }
 
-        while (g_sendbuff_len <= 0)
-        {
-            printf("before pthread_cond_wait\n");
-            pthread_cond_wait(&g_cond_sendbuff, &g_mutex_sendbuff);
-            printf("after pthread_cond_wait\n");
-        }
+    int cCmd = pBuff[3] & 0xFF;
+    int iSendBuffLen;
+    g_SendBuffer[0] = (char) 0xAA;
+    g_SendBuffer[1] = (char) 0x00;
 
-        if (g_sendbuff_len >= MAX_LEN)
-        {
-            g_sendbuff_len = 0;
-            OGM_PRINT_RED("Send buffer is too long\n");
-        }
-        else
-        {
-            writeLen = write(m_Usartfd, g_sendbuff, g_sendbuff_len);
+//    OGM_PRINT_CYAN("cCmd:[0x%02X]\n", cCmd);
+    switch (cCmd)
+    {
+        case 0x83:
+            g_SendBuffer[2] = (char) 0x02;
+            g_SendBuffer[3] = (char) 0x83;
+            g_SendBuffer[4] = (char) 0x00;
+            g_SendBuffer[5] = (char) 0x83;
+            iSendBuffLen = 6;
+            break;
+        case 0x84:
+            g_SendBuffer[2] = (char) 0x01;
+            g_SendBuffer[3] = (char) 0x84;
+            g_SendBuffer[4] = (char) 0x84;
+            iSendBuffLen = 5;
+            break;
+        case 0x85:
+            g_SendBuffer[2] = (char) 0x02;
+            g_SendBuffer[3] = (char) 0x85;
+            g_SendBuffer[5] = (char) 0x85;
+            iSendBuffLen = 6;
 
-            if (writeLen < 0)
+            iCRCRecv = ((pBuff[uiBuffLen - 3] << 8) & 0xFF00) + (pBuff[uiBuffLen - 2] & 0xFF);
+            iCRCCalc = GenCRC((unsigned char *)pBuff + 6, uiBuffLen - 9);
+
+            if (iCRCCalc != iCRCRecv)
             {
-                OGM_PRINT_RED("Can not write buffer to serial port\n");
-                pthread_exit((void *) 0);
+                g_SendBuffer[4] = (char) 0x01;
+                OGM_PRINT_ORANGE("iCRCRecv:[0x%04X] iCRCCalc:[0x%04X]\n", iCRCRecv, iCRCCalc);
             }
             else
             {
-                OGM_PRINT_GREEN("Send: [");
-                print_as_hexstring(g_sendbuff, writeLen);
-                OGM_PRINT_GREEN("]\n");
-
-                if (writeLen == g_sendbuff_len)
-                {
-                    g_sendbuff_len = 0;
-                    memset(g_sendbuff, 0x00, MAX_SENDBUFF_LEN);
-                }
-                else if (writeLen < g_sendbuff_len)
-                {
-                    g_sendbuff_len -= writeLen;
-                    memset(tmpbuff, 0x00, MAX_SENDBUFF_LEN);
-                    memcpy(tmpbuff, g_sendbuff + writeLen, g_sendbuff_len);
-                    memcpy(g_sendbuff, tmpbuff, g_sendbuff_len);
-                }
+                g_SendBuffer[4] = (char) 0x00;
             }
+
+            break;
+        case 0x86:
+            g_SendBuffer[2] = (char) 0x02;
+            g_SendBuffer[3] = (char) 0x86;
+            g_SendBuffer[4] = (char) 0x00;
+            g_SendBuffer[5] = (char) 0x86;
+            iSendBuffLen = 6;
+            break;
+        default:
+            iSendBuffLen = 0;
+    }
+
+    if (iSendBuffLen > 0)
+    {
+        pthread_mutex_lock(&g_SendBuffer_Mutex);
+        g_SendBufferCount = iSendBuffLen;
+        pthread_cond_signal(&g_SendBuffer_Cond);
+        pthread_mutex_unlock(&g_SendBuffer_Mutex);
+    }
+}
+
+void *SendThread(void *arg)
+{
+    printf("SendThread...\n");
+
+    while (1)
+    {
+        pthread_mutex_lock(&g_SendBuffer_Mutex);
+
+        if (g_SendBufferCount <= 0)
+        {
+            pthread_cond_wait(&g_SendBuffer_Cond, &g_SendBuffer_Mutex);
         }
 
-        pthread_mutex_unlock(&g_mutex_sendbuff);
+//        OGM_PRINT_GREEN("g_SendBuffer:[%d]\n", g_SendBufferCount);
+        OGM_PRINT_GREEN("Send: [");
+        print_as_hexstring(g_SendBuffer, g_SendBufferCount);
+        OGM_PRINT_GREEN("]\n");
+
+        write(m_Usartfd, g_SendBuffer, g_SendBufferCount);
+
+        g_SendBufferCount = 0;
+
+        pthread_mutex_unlock(&g_SendBuffer_Mutex);
     }
 
     pthread_exit((void *) 0);
@@ -395,6 +488,7 @@ void *RecvThread(void *arg)
                 }
                 else
                 {
+//                    OGM_PRINT_LIMEGREEN("len_temp:[0x%04X]\n", len_temp - 1);
                     static int last = 0;
                     iReadLen = read(m_Usartfd, buf + recv_len + last, len_temp - last);
                     if (iReadLen < (len_temp - last) && iReadLen > 0)
@@ -406,10 +500,9 @@ void *RecvThread(void *arg)
                         recv_len += len_temp;
                         last = 0;
 
-                        state = 0;
-                        OGM_PRINT_ORANGE("Rply:[");
-                        print_as_hexstring((char *) buf, recv_len);
-                        OGM_PRINT_ORANGE("]\n");
+                        ProcessRecvBuffer(buf, recv_len);
+
+                        state    = 0;
                         recv_len = 0;
                     }
                 }
@@ -419,81 +512,14 @@ void *RecvThread(void *arg)
     pthread_exit((void *) 0);
 }
 
-void *ServerSocketThread(void *arg)
-{
-    //创建套接字
-    int server_fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-    //将套接字和IP、端口绑定
-    struct sockaddr_in server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));  //每个字节都用0填充
-    server_addr.sin_family      = AF_INET;  //使用IPv4地址
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");  //具体的IP地址
-    server_addr.sin_port        = htons(4433);  //端口
-    bind(server_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
-
-    //进入监听状态，等待用户发起请求
-    listen(server_fd, 20);
-
-    //接收客户端请求
-    struct sockaddr_in client_addr;
-
-    socklen_t client_addr_size = sizeof(client_addr);
-    int       client_fd        = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_size);
-
-    int         i_readlen;
-    static char readbuff[MAX_SENDBUFF_LEN];
-
-    while (1)
-    {
-        OGM_PRINT_GREEN("wait...\n");
-        if ((i_readlen = read(client_fd, readbuff, sizeof(readbuff) - 1)) < 0)
-        {
-            perror("read");
-            pthread_exit((void *) 1);
-        }
-        if (i_readlen <= 0)
-        {
-            break;
-        }
-        readbuff[i_readlen] = '\0';
-        printf("read:[%s]\n", readbuff);
-
-        char *p_buffer    = NULL;
-        int  i_buffer_len = 0;
-
-        if (hexstring_to_bytearray(readbuff, &p_buffer, &i_buffer_len))
-        {
-            OGM_PRINT_RED("convert failed:[%s]\n", readbuff);
-            continue;
-        }
-
-        pthread_mutex_lock(&g_mutex_sendbuff);
-
-        memcpy(g_sendbuff + g_sendbuff_len, p_buffer, i_buffer_len);
-        g_sendbuff_len += i_buffer_len;
-
-        pthread_cond_broadcast(&g_cond_sendbuff);
-        pthread_mutex_unlock(&g_mutex_sendbuff);
-
-        if (p_buffer)
-        {
-            free(p_buffer);
-            p_buffer = NULL;
-        }
-    }
-
-    //关闭套接字
-    close(client_fd);
-    close(server_fd);
-
-    pthread_exit((void *) 0);
-}
-
 void signal_handler(int signum)
 {
     printf("Interrupt signal (%d) received.\n", signum);
+
     close(m_Usartfd);
+    pthread_mutex_destroy(&g_SendBuffer_Mutex);
+    pthread_cond_destroy(&g_SendBuffer_Cond);
+
     exit(signum);
 }
 
@@ -528,13 +554,14 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    BuildCRC16TableFor8813(CRC_GEN_POLY);
+
     pthread_t TxID;
     pthread_t RxID;
-    pthread_t ServerSocketID;
     int       iRet;
 
-    pthread_mutex_init(&g_mutex_sendbuff, NULL);
-    pthread_cond_init(&g_cond_sendbuff, NULL);
+    pthread_mutex_init(&g_SendBuffer_Mutex, NULL);
+    pthread_cond_init(&g_SendBuffer_Cond, NULL);
 
     iRet = pthread_create(&RxID, NULL, RecvThread, NULL);
     if (iRet)
@@ -550,18 +577,13 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    iRet = pthread_create(&ServerSocketID, NULL, ServerSocketThread, NULL);
-    if (iRet)
-    {
-        printf("pthread_create ServerSocketThread failed\n");
-        exit(-1);
-    }
-
     signal(SIGINT, signal_handler);
 
-    pthread_join(RxID, NULL);
     pthread_join(TxID, NULL);
-    pthread_join(ServerSocketID, NULL);
+    pthread_join(RxID, NULL);
+
+    pthread_mutex_destroy(&g_SendBuffer_Mutex);
+    pthread_cond_destroy(&g_SendBuffer_Cond);
 
     return 0;
 }

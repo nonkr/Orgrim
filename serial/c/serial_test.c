@@ -355,7 +355,8 @@ void *SendThread(void *arg)
                 pSendData = NULL;
             }
 
-            sleep(3);
+//            sleep(3);
+            usleep(1000);
         }
     }
     pthread_exit((void *) 0);
@@ -406,13 +407,13 @@ void *RecvThread(void *arg)
                     if (iReadLen == 1)
                     {
                         state    = 2;
-                        len_temp = (*(buf + recv_len) << 8);
+                        len_temp = (*(buf + recv_len) << 8) & 0xFF00;
                         recv_len += iReadLen;
                     }
                     else if (iReadLen == 2)
                     {
                         state    = 3;
-                        len_temp = (*(buf + recv_len) << 8) + *(buf + recv_len + 1) + 1;
+                        len_temp = ((*(buf + recv_len) << 8) & 0xFF00) + (*(buf + recv_len + 1) & 0xFF) + 1;
                         recv_len += iReadLen;
                     }
                 }
@@ -421,8 +422,8 @@ void *RecvThread(void *arg)
                     iReadLen = read(m_Usartfd, buf + recv_len, 1);
                     if (iReadLen == 1)
                     {
-                        state    = 3;
-                        len_temp += *(buf + recv_len) + 1;
+                        state = 3;
+                        len_temp += (*(buf + recv_len) & 0xFF) + 1;
                         recv_len += iReadLen;
                     }
                 }
@@ -462,7 +463,7 @@ void signal_handler(int signum)
 int main(int argc, char **argv)
 {
     m_Usartfd   = -1;
-    m_nSpeed    = 115200;
+    m_nSpeed    = 1500000;
     m_nDatabits = 8;
     m_nStopbits = 1;
     m_nParity   = 'n';
