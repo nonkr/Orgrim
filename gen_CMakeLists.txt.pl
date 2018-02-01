@@ -3,14 +3,25 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use File::Basename;
+use Data::Dumper;
 
 my $PROJECT = basename($Bin);
 
 # add directories where header files exist
 my @INCLUDES = ();
 
+my @EXCLUDES = (
+    "cmake-build-debug",
+);
+my $EXCLUDES_STR = '';
+if (scalar(@EXCLUDES) != 0)
+{
+    $EXCLUDES_STR = join(" -o ", map {qq(-path "./$_")} @EXCLUDES);
+    $EXCLUDES_STR = qq(\\( $EXCLUDES_STR \\) -prune -o)
+}
+
 # add reg which you want to exclude
-my @src_files = `find . \\( -path "./cmake-build-debug" \\) -prune -o -name "*.c" -print -o -name "*.cpp" -print -o -name "*.cc" -print -o -name "*.h" -print -o -name "Makefile*" -print`;
+my @src_files = `find . $EXCLUDES_STR -name "*.c" -print -o -name "*.cpp" -print -o -name "*.cc" -print -o -name "*.h" -print -o -name "Makefile*" -print`;
 
 open(my $fh, ">", "CMakeLists.txt");
 
