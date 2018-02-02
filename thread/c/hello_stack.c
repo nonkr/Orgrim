@@ -20,7 +20,7 @@ pthread_attr_t attr;
 
 void *dowork(void *threadid)
 {
-    double A[N][N];
+    double A[N][N] __attribute__((unused));
     int    i, j;
     long   tid;
     size_t mystacksize;
