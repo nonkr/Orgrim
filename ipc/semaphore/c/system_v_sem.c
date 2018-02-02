@@ -1,10 +1,5 @@
 /*
- * Copyright (c) 2017, Billie Soong <nonkr@hotmail.com>
- * All rights reserved.
- *
- * This file is under GPL, see LICENSE for details.
- *
- * Author: Billie Soong <nonkr@hotmail.com>
+ * Copy from Linux高性能服务器编程
  * Datetime: 2018/2/2 10:18
  *
  */
