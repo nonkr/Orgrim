@@ -18,9 +18,6 @@ using namespace chrono;
 
 std::string time_point_to_string(std::chrono::system_clock::time_point &tp)
 {
-    using namespace std;
-    using namespace std::chrono;
-
     auto ttime_t = system_clock::to_time_t(tp);
     auto tp_sec = system_clock::from_time_t(ttime_t);
     milliseconds ms = duration_cast<milliseconds>(tp - tp_sec);
