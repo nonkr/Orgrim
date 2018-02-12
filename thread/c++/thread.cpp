@@ -2,14 +2,13 @@
  * Copyright (c) 2017, Billie Soong <nonkr@hotmail.com>
  * All rights reserved.
  *
- * This file is under GPL, see LICENSE for details.
+ * This file is under MIT, see LICENSE for details.
  *
  * Author: Billie Soong <nonkr@hotmail.com>
  * Datetime: 2018/1/21 0:32
  *
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 
 #include <chrono>    // std::chrono::seconds
