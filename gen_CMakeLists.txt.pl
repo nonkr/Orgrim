@@ -33,7 +33,7 @@ print $fh qq(set\(SOURCE_FILES\n);
 foreach my $src_file (@src_files)
 {
     chomp($src_file);
-    next if ($src_file =~ /\.svn/);
+    next if ($src_file =~ /\.svn/ or $src_file =~ /CMakeFiles/);
     $src_file =~ s!./!!;
     next if($src_file =~ /^dist/);
     print $fh qq(    $src_file\n);
