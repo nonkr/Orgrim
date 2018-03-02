@@ -11,6 +11,8 @@
 #ifndef CAT_COLOR_H
 #define CAT_COLOR_H
 
+#include <stdio.h>
+
 #define KRED        "\x1B[0;31m"    // ANSI red color
 #define KSALMON     "\x1B[1;31m"    // ANSI salmon color
 #define KGREEN      "\x1B[0;32m"    // ANSI green color
