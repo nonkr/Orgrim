@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 2.8)
 project(Demo7)
 set(Demo_VERSION_MAJOR 1)
 set(Demo_VERSION_MINOR 0)
+set(Demo_VERSION_PATCH 1)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
