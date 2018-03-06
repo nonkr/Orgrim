@@ -14,13 +14,13 @@
 #include <memory.h>
 #include "../../utils/print_utils.h"
 
-typedef struct __attribute__((packed))
+typedef struct __attribute__((__packed__))
 {
     int   a;
     short b;
 } Foo;
 
-typedef struct __attribute__((packed))
+typedef struct __attribute__((__packed__))
 {
     char      no;
     Foo       *foo;
