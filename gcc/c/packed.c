@@ -22,26 +22,35 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    Foo       foo[3];
+    char      no;
+    Foo       *foo;
     long long llLong;
     char      c;
 } Bar;
 
 int main()
 {
+    int i;
     Bar bar;
 
     memset(&bar, 0x00, sizeof(Bar));
-    bar.foo[0].a = 0x1234;
-    bar.foo[0].b = 0x02;
-    bar.foo[1].a = 0x1234;
-    bar.foo[1].b = 0x04;
-    bar.foo[2].a = 0x1234;
-    bar.foo[2].b = 0x06;
-    bar.llLong   = 0x1234;
-    bar.c        = 0x0C;
 
+    bar.no  = 3;
+    bar.foo = malloc(sizeof(Foo) * bar.no);
+
+    for (i = 0; i < bar.no; i++)
+    {
+        bar.foo[i].a = 0x1234;
+        bar.foo[i].b = (short) (i + 1);
+    }
+
+    bar.llLong = 0x1234;
+    bar.c      = 0x0C;
+
+    print_as_hexstring((char *) bar.foo, sizeof(Foo) * bar.no);
     print_as_hexstring((char *) &bar, sizeof(Bar));
+
+    free(bar.foo);
 
     return EXIT_SUCCESS;
 }
