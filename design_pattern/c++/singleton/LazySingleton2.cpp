@@ -24,8 +24,6 @@ public:
     static pthread_mutex_t mutex;
 
     static LazySingleton2 *getInstance();
-
-    int a;
 };
 
 pthread_mutex_t LazySingleton2::mutex;
