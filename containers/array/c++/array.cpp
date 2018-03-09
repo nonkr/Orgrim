@@ -20,6 +20,7 @@ int main()
     array<string, 5> arr = {"C++", "Java", "PHP"};
 
     cout << "arr.size() = " << arr.size() << endl;
+    cout << "arr.max_size() = " << arr.max_size() << endl;
 
     if (!arr.empty())
     {
