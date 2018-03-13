@@ -18,24 +18,42 @@ using namespace std;
 using namespace chrono;
 
 #define TICK(X) auto X = system_clock::now();
-
-#define TOCK(X) do { \
+#define GTICK(X) do { \
+                    X = system_clock::now(); \
+                 } while(false);
+#define TOCK(X, LABEL) do { \
                     auto end      = system_clock::now(); \
                     auto duration = duration_cast<microseconds>(end - (X)); \
-                    printf("time duration %s: %.3f sec.\n", (#X), double(duration.count()) * microseconds::period::num / microseconds::period::den); \
-                } while(0);
+                    printf("Time duration of %s: %.3f sec.\n", LABEL, double(duration.count()) * microseconds::period::num / microseconds::period::den); \
+                } while(false);
+#define GTOCK(X, LABEL) TOCK(X, LABEL)
+#define GCLOCK system_clock::time_point
+
+GCLOCK g_A;
+
+void a()
+{
+    GTICK(g_A);
+}
+
+void b()
+{
+    GTOCK(g_A, "Global");
+}
 
 int main()
 {
     TICK(aa);
 
+    a();
     // 一段计算
     for (int i = 0; i < 1000000; i++)
     {
         pow(2, i);
     }
+    b();
 
-    TOCK(aa);
+    TOCK(aa, "Local");
 
     return 0;
 }
