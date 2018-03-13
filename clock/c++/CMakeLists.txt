@@ -14,4 +14,5 @@ add_definitions(-std=c++11)
 
 add_executable(clock_t clock_t.cpp)
 add_executable(chrono chrono.cpp)
+add_executable(chrono_macros chrono_macros.cpp)
 add_executable(timeformat timeformat.cpp)
