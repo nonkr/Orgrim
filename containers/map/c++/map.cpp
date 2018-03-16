@@ -37,14 +37,14 @@ int main()
     auto *pStudent2 = new Student;
     pStudent2->age = 20;
 
-    printf("pStudent1: %s\n", typeid(pStudent1).name());
-    printf("pStudent2: %s\n", typeid(pStudent2).name());
+    printf("pStudent1: %s\n", typeid(*pStudent1).name());
+    printf("pStudent2: %s\n", typeid(*pStudent2).name());
 
-    mapStudents[typeid(pStudent1).name()] = pStudent1;
+    mapStudents[typeid(*pStudent1).name()] = pStudent1;
 
-    if (mapStudents.count(typeid(pStudent1).name()) == 0)
+    if (mapStudents.count(typeid(*pStudent1).name()) == 0)
     {
-        mapStudents[typeid(pStudent2).name()] = pStudent2;
+        mapStudents[typeid(*pStudent2).name()] = pStudent2;
     }
 
     for (const auto &n : mapStudents)
