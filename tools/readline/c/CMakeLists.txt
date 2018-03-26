@@ -4,10 +4,10 @@ project(readline)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall")
 
-if(CMAKE_CROSSCOMPILING)
-link_directories($ENV{CVR_SDK_ROOT}/out/system/lib)
-include_directories(${CMAKE_INSTALL_PREFIX}/include)
-endif()
+if (CMAKE_CROSSCOMPILING)
+    link_directories($ENV{CVR_SDK_ROOT}/out/system/lib)
+    include_directories($ENV{CVR_SDK_ROOT}/out/system/include)
+endif ()
 
 aux_source_directory(. DIR_SRCS)
 
