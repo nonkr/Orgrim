@@ -10,5 +10,4 @@ include_directories($ENV{CVR_SDK_ROOT}/out/system/include)
 endif()
 
 add_executable(getopt getopt.c)
-
-#target_link_libraries(sample ev)
+add_executable(getopt_long getopt_long.c)

@@ -22,9 +22,15 @@ int main(int argc, char **argv)
     int  index;
     int  c;
 
+    // 控制是否向STDERR打印错误。为0时则关闭打印
     opterr = 0;
 
+    /*
+     * 全局变量optopt用于存储出错的option（如缺参数），或者不认识的option
+     */
+
     while ((c = getopt(argc, argv, "abc:")) != -1)
+    {
         switch (c)
         {
             case 'a':
@@ -36,24 +42,25 @@ int main(int argc, char **argv)
             case 'c':
                 cvalue = optarg;
                 break;
-            case '?':
+            case '?': // 发现不认识的option或者碰到option后面缺参数，此时会返回?号
                 if (optopt == 'c')
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
                 else if (isprint (optopt))
                     fprintf(stderr, "Unknown option `-%c'.\n", optopt);
                 else
-                    fprintf(stderr,
-                            "Unknown option character `\\x%x'.\n",
-                            optopt);
+                    fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
                 return 1;
             default:
                 abort();
         }
+    }
 
-    printf("aflag = %d, bflag = %d, cvalue = %s\n",
-           aflag, bflag, cvalue);
+    printf("aflag = %d, bflag = %d, cvalue = %s\n", aflag, bflag, cvalue);
 
     for (index = optind; index < argc; index++)
+    {
         printf("Non-option argument %s\n", argv[index]);
+    }
+
     return 0;
 }
