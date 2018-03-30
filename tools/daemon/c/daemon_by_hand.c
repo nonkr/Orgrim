@@ -5,7 +5,7 @@
  * This file is under MIT, see LICENSE for details.
  *
  * Author: Billie Soong <nonkr@hotmail.com>
- * Datetime: 2018/3/29 19:20
+ * Datetime: 2018/3/30 9:45
  *
  */
 
@@ -15,6 +15,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define ERR_EXIT(m) \
 do\
@@ -25,15 +26,34 @@ do\
 while (0);\
 
 
+void creat_daemon(void)
+{
+    pid_t pid;
+    pid = fork();
+    if (pid == -1)
+        ERR_EXIT("fork error");
+    if (pid > 0)
+        exit(EXIT_SUCCESS);
+    if (setsid() == -1)
+        ERR_EXIT("SETSID ERROR");
+    chdir("/");
+    int i;
+    for (i = 0; i < 3; ++i)
+    {
+        close(i);
+        open("/dev/null", O_RDWR);
+        dup(0);
+        dup(0);
+    }
+    umask(0);
+}
+
 int main(void)
 {
     time_t t;
     int    fd;
 
-    if (daemon(0, 0) == -1)
-    {
-        ERR_EXIT("daemon error");
-    }
+    creat_daemon();
 
     while (1)
     {

@@ -10,3 +10,4 @@ include_directories($ENV{CVR_SDK_ROOT}/out/system/include)
 endif()
 
 add_executable(daemon daemon.c)
+add_executable(daemon_by_hand daemon_by_hand.c)
