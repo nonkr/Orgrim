@@ -37,7 +37,7 @@ int main(void)
 
     while (1)
     {
-        fd = open("daemon.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+        fd = open("/tmp/daemon.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
         if (fd == -1)
             ERR_EXIT("open error");
         t = time(0);
