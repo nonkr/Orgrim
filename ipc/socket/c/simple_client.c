@@ -14,29 +14,40 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
 
 int main()
 {
-    //创建套接字
-    int sock = socket(PF_INET, SOCK_STREAM, 0);
+    int server_fd;
+    struct sockaddr_in server_addr;
+    ssize_t readbytes;
 
-    //向服务器（特定的IP和端口）发起请求
-    struct sockaddr_in serv_addr;
-    memset(&serv_addr, 0, sizeof(serv_addr));  //每个字节都用0填充
-    serv_addr.sin_family = AF_INET;  //使用IPv4地址
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");  //具体的IP地址
-    serv_addr.sin_port = htons(1234);  //端口
-    connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+    // 创建套接字
+    if ((server_fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1)
+    {
+        perror("create socket failed\n");
+        exit(1);
+    }
 
-    //读取服务器传回的数据
+    // 向服务器（特定的IP和端口）发起请求
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(1234);
+    if ((connect(server_fd, (struct sockaddr *) &server_addr, sizeof(server_addr))) == -1)
+    {
+        perror("connect failed\n");
+        exit(2);
+    }
+
+    // 读取服务器传回的数据
     char buffer[40];
-    read(sock, buffer, sizeof(buffer) - 1);
+    readbytes = read(server_fd, buffer, sizeof(buffer) - 1);
 
+    printf("readbytes:%zu\n", readbytes);
     printf("Message form server: %s\n", buffer);
 
-    //关闭套接字
-    close(sock);
+    // 关闭套接字
+    close(server_fd);
 
     return 0;
 }
