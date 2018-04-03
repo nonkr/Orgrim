@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
         {
             buffLeft = size - (int) fp.tellg();
             printf("readSize:[%d] buffLeft:[%d]\n", readSize, buffLeft);
-            printf("[[%s]]\n", buff);
+//            printf("[[%s]]\n", buff);
         }
     }
 

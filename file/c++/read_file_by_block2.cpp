@@ -12,8 +12,11 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <cmath>
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 
 int main(int argc, char *argv[])
 {
@@ -25,7 +28,7 @@ int main(int argc, char *argv[])
 
     char       *file          = argv[1];
     int        block_size     = strtol(argv[2], nullptr, 0);
-    streamoff  size;
+    streamoff  nTotalSize;
     streamoff  buffLeft;
     streamsize readSize;
     streamoff  nTotalReadSize = 0;
@@ -39,24 +42,37 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    size = fp.tellg();
-    printf("total file size:[%llu]\n", size);
+    nTotalSize = fp.tellg();
+    printf("total file size:[%llu]\n", nTotalSize);
+
+    double dTotalDuration = 0;
+    double dAvgDuration   = 0;
 
     fp.seekg(0, ios::beg);
     do
     {
         memset(buff, 0x00, (size_t) block_size);
+        auto StartTime = system_clock::now();
         readSize = fp.read(buff, block_size).gcount();
+        auto   EndTime      = system_clock::now();
+        auto   DurationTime = duration_cast<microseconds>(EndTime - StartTime);
+        double dDuration    = double(DurationTime.count()) * microseconds::period::num / microseconds::period::den;
         nTotalReadSize += readSize;
         if (readSize > 0)
         {
-            buffLeft = size - (int) fp.tellg();
+            buffLeft     = nTotalSize - (int) fp.tellg();
             frame++;
-            printf("frame:[%d] readSize:[%d] nTotalReadSize:[%llu] buffLeft:[%llu]\n",
+            dTotalDuration += dDuration;
+            dAvgDuration = dTotalDuration / frame;
+            printf("frame:[%d/%.0lf] readSize:[%d] nTotalReadSize:[%llu] buffLeft:[%llu] dTotalDuration:[%fs] dAvgDuration:[%fs]\n",
                    frame,
+                   ceil(((float) nTotalSize / block_size)),
                    readSize,
                    nTotalReadSize,
-                   buffLeft);
+                   buffLeft,
+                   dTotalDuration,
+                   dAvgDuration
+            );
         }
     } while (readSize > 0);
 
