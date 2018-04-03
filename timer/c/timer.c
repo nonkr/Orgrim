@@ -20,10 +20,18 @@ void printMsg(int num)
     printf("%s", "Hello World!!\n");
 }
 
+void signalHandler(int signum)
+{
+    printf("Interrupt signal (%d) received.\n", signum);
+    printf("to cancel the timer\n");
+    setitimer(ITIMER_REAL, 0, NULL);
+}
+
 int main()
 {
     // Register printMsg to SIGALRM
     signal(SIGALRM, printMsg);
+    signal(SIGINT, signalHandler);
 
     struct itimerval tick;
 
@@ -31,11 +39,11 @@ int main()
     memset(&tick, 0, sizeof(tick));
 
     // Timeout to run function first time
-    tick.it_value.tv_sec  = 1; // sec
+    tick.it_value.tv_sec  = 3; // sec
     tick.it_value.tv_usec = 0; // micro sec.
 
     // Interval time to run function
-    tick.it_interval.tv_sec  = 1; // sec, set zero for one shot
+    tick.it_interval.tv_sec  = 3; // sec, set zero for one shot
     tick.it_interval.tv_usec = 0; // micro sec.
 
     // Set timer, ITIMER_REAL : real-time to decrease timer, send SIGALRM when timeout
