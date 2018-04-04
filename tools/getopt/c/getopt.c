@@ -14,11 +14,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
     int  aflag   = 0;
     int  bflag   = 0;
     char *cvalue = NULL;
+    char *dvalue = "";
     int  index;
     int  c;
 
@@ -29,7 +30,7 @@ int main(int argc, char **argv)
      * 全局变量optopt用于存储出错的option（如缺参数），或者不认识的option
      */
 
-    while ((c = getopt(argc, argv, "abc:")) != -1)
+    while ((c = getopt(argc, argv, "abc:d::")) != -1)
     {
         switch (c)
         {
@@ -42,20 +43,24 @@ int main(int argc, char **argv)
             case 'c':
                 cvalue = optarg;
                 break;
+            case 'd':
+                if (optarg)
+                    dvalue = optarg;
+                break;
             case '?': // 发现不认识的option或者碰到option后面缺参数，此时会返回?号
                 if (optopt == 'c')
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
                 else if (isprint (optopt))
-                    fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+                    fprintf(stderr, "Unknown option '-%c'.\n", optopt);
                 else
-                    fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+                    fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
                 return 1;
             default:
                 abort();
         }
     }
 
-    printf("aflag = %d, bflag = %d, cvalue = %s\n", aflag, bflag, cvalue);
+    printf("aflag = %d, bflag = %d, cvalue = %s dvalue = %s\n", aflag, bflag, cvalue, dvalue);
 
     for (index = optind; index < argc; index++)
     {

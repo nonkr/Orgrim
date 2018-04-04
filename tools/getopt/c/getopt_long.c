@@ -12,28 +12,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <ctype.h>
 
 /* Flag set by ‘--verbose’. */
 static int verbose_flag;
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
     int c;
 
     static struct option long_options[] =
                              {
                                  /* These options set a flag. */
-                                 {"verbose", no_argument,       &verbose_flag, 1},
-                                 {"brief",   no_argument,       &verbose_flag, 0},
+                                 {"verbose", no_argument, &verbose_flag, 1},
+                                 {"brief",   no_argument, &verbose_flag, 0},
                                  /* These options don’t set a flag.
                                     We distinguish them by their indices. */
-                                 {"add",     no_argument,       0,             'a'},
-                                 {"append",  no_argument,       0,             'b'},
-                                 {"delete",  required_argument, 0,             'd'},
-                                 {"create",  required_argument, 0,             'c'},
-                                 {"file",    required_argument, 0,             'f'},
-                                 {0, 0,                         0,             0}
+                                 {"add",     no_argument,       NULL,    'a'},
+                                 {"append",  no_argument,       NULL,    'b'},
+                                 {"delete",  required_argument, NULL,    'd'},
+                                 {"create",  required_argument, NULL,    'c'},
+                                 {"file",    required_argument, NULL,    'f'},
+                                 {0, 0,                         NULL,    0}
                              };
 
     // 控制是否向STDERR打印错误。为0时则关闭打印
@@ -45,45 +46,45 @@ main(int argc, char **argv)
 
     /* getopt_long stores the option index here. */
     int option_index = 0;
-
     while ((c = getopt_long(argc, argv, "abc:d:f:", long_options, &option_index)) != -1)
     {
         switch (c)
         {
-            case 0:
-                /* If this option set a flag, do nothing else now. */
-                if (long_options[option_index].flag != 0)
-                    break;
-                printf("option %s", long_options[option_index].name);
-                if (optarg)
-                    printf(" with arg %s", optarg);
-                printf("\n");
-                break;
-
             case 'a':
-                puts("option -a\n");
+                printf("option -a\n");
                 break;
 
             case 'b':
-                puts("option -b\n");
+                printf("option -b\n");
                 break;
 
             case 'c':
-                printf("option -c with value `%s'\n", optarg);
+                printf("option -c with value '%s'\n", optarg);
                 break;
 
             case 'd':
-                printf("option -d with value `%s'\n", optarg);
+                printf("option -d with value '%s'\n", optarg);
                 break;
 
             case 'f':
-                printf("option -f with value `%s'\n", optarg);
+                printf("option -f with value '%s'\n", optarg);
                 break;
 
             case '?':
-                /* getopt_long already printed an error message. */
-                break;
-
+                switch (optopt)
+                {
+                    case 'c':
+                    case 'd':
+                    case 'f':
+                        fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+                        break;
+                    default:
+                        if (isprint(optopt))
+                            fprintf(stderr, "Unknown option '-%c'.\n", optopt);
+                        else
+                            fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
+                }
+                return 1;
             default:
                 abort();
         }
