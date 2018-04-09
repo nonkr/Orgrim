@@ -11,50 +11,107 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <memory.h>
+#include <assert.h>
+#include <math.h>
 
-/*progress为进度百分比，取值为0~100, last_char_count为上一次显示进度条时所用到的字符个数*/
-int display_progress(int progress, int last_char_count)
+int iFirstDisplay = 1;
+
+void progress_init()
 {
-    int i = 0;
+    iFirstDisplay = 1;
+}
 
-    /*把上次显示的进度条信息全部清空*/
-    for (i = 0; i < last_char_count; i++)
+void display_progress(int ws_col, const char *pLabel, const int total, int current)
+{
+    int iLabelLen   = 0;
+    int iPercent    = 0;
+    int i;
+    int iEqualLen   = 0;
+    int iPercentLen = 0;
+    int iLeftLen    = 0;
+    int iSpaceLen   = 0;
+    int iGreatLen   = 0;
+
+    assert(total > 0);
+    assert(current >= 0);
+
+    if (pLabel)
     {
-        printf("\b");
+        iLabelLen = strlen(pLabel) + 1;
     }
 
-    /*此处输出‘=’，也可以是其他字符，仅个人喜好*/
-    for (i = 0; i < progress; i++)
+    iPercent = (int) floor((double) current / total * 100);
+    if (iPercent < 10)
+    {
+        iPercentLen = 4;
+    }
+    else if (iPercent < 100)
+    {
+        iPercentLen = 5;
+    }
+    else
+    {
+        iPercentLen = 6;
+    }
+
+    if (iFirstDisplay)
+    {
+        iFirstDisplay = 0;
+    }
+    else
+    {
+        for (i = 0; i < ws_col; i++)
+        {
+            printf("\b");
+        }
+    }
+
+    if (pLabel)
+    {
+        printf("%s:", pLabel);
+    }
+
+    iEqualLen = (int) floor((ws_col - iLabelLen - iPercentLen) * (double) current / total);
+
+    for (i = 0; i < iEqualLen; i++)
     {
         printf("=");
     }
-    printf(">>");
-    /*输出空格截止到第104的位置，仅个人审美*/
-    for (i += 2; i < 104; i++)
+
+    iLeftLen  = ws_col - iLabelLen - iPercentLen - iEqualLen;
+    iGreatLen = (iLeftLen >= 3) ? 3 : iLeftLen;
+
+    for (i = 0; i < iGreatLen; i++)
+    {
+        printf(">");
+    }
+
+    iSpaceLen = ws_col - iLabelLen - iPercentLen - iEqualLen - iGreatLen;
+
+    for (i = 0; i < iSpaceLen; i++)
     {
         printf(" ");
     }
-    /*输出进度条百分比*/
-    i = i + printf("[%d%%]", progress);
-    /*此处不能少，需要刷新输出缓冲区才能显示，
-    这是系统的输出策略*/
-    fflush(stdout);
 
-    /*返回本次显示进度条时所输出的字符个数*/
-    return i;
+    printf("[%d%%]\n", iPercent);
+    fflush(stdout);
 }
 
 int main()
 {
     int i = 0;
-    int ret = 0;
 
-    printf("progress:  ");
-    for (i = 0; i < 101; i++)
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    progress_init();
+    for (i = 0; i <= 123; i++)
     {
-        ret = display_progress(i, ret);
-        usleep(1000 * 200);
+        display_progress(w.ws_col, "Label", 123, i);
+        usleep(50000);
     }
-    printf("\n");
+
     return 0;
 }
