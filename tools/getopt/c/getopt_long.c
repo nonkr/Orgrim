@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <ctype.h>
+#include <memory.h>
 
 /* Flag set by ‘--verbose’. */
 static int verbose_flag;
@@ -25,16 +26,17 @@ main(int argc, char *argv[])
     static struct option long_options[] =
                              {
                                  /* These options set a flag. */
-                                 {"verbose", no_argument, &verbose_flag, 1},
-                                 {"brief",   no_argument, &verbose_flag, 0},
+                                 {"verbose",  no_argument, &verbose_flag, 1},
+                                 {"brief",    no_argument, &verbose_flag, 0},
                                  /* These options don’t set a flag.
                                     We distinguish them by their indices. */
-                                 {"add",     no_argument,       NULL,    'a'},
-                                 {"append",  no_argument,       NULL,    'b'},
-                                 {"delete",  required_argument, NULL,    'd'},
-                                 {"create",  required_argument, NULL,    'c'},
-                                 {"file",    required_argument, NULL,    'f'},
-                                 {0, 0,                         NULL,    0}
+                                 {"add",      no_argument,       NULL,    'a'},
+                                 {"append",   no_argument,       NULL,    'b'},
+                                 {"delete",   required_argument, NULL,    'd'},
+                                 {"create",   required_argument, NULL,    'c'},
+                                 {"file",     required_argument, NULL,    'f'},
+                                 {"onlylong", no_argument,       NULL,    0},
+                                 {0, 0,                          NULL,    0}
                              };
 
     // 控制是否向STDERR打印错误。为0时则关闭打印
@@ -50,6 +52,13 @@ main(int argc, char *argv[])
     {
         switch (c)
         {
+            case '\x00':
+                if (long_options[option_index].flag != 0)
+                    break;
+                if (strcmp(long_options[option_index].name, "onlylong") == 0)
+                    printf("option --long\n");
+                break;
+
             case 'a':
                 printf("option -a\n");
                 break;
@@ -85,9 +94,6 @@ main(int argc, char *argv[])
                             fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
                 }
                 return 1;
-
-            case '\x00':
-                break;
 
             default:
                 abort();
