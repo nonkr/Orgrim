@@ -85,6 +85,10 @@ main(int argc, char *argv[])
                             fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
                 }
                 return 1;
+
+            case '\x00':
+                break;
+
             default:
                 abort();
         }
