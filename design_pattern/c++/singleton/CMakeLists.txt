@@ -7,5 +7,5 @@ add_definitions(-std=c++11)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
 
 add_executable(EagerSingleton EagerSingleton.cpp)
-add_executable(LazySingleton1 LazySingleton1.cpp)
-add_executable(LazySingleton2 LazySingleton2.cpp)
+add_executable(LazySingleton LazySingleton.cpp)
+add_executable(MeyersSingleton MeyersSingleton.cpp)

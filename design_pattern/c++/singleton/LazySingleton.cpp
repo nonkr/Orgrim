@@ -12,32 +12,32 @@
 #include <cstdio>
 #include <pthread.h>
 
-class LazySingleton1
+class LazySingleton
 {
 protected:
-    LazySingleton1()
+    LazySingleton()
     {
         pthread_mutex_init(&mutex, nullptr);
     }
 
 private:
-    static LazySingleton1 *p;
+    static LazySingleton *p;
 public:
     static pthread_mutex_t mutex;
 
-    static LazySingleton1 *getInstance();
+    static LazySingleton *getInstance();
 };
 
-pthread_mutex_t LazySingleton1::mutex;
-LazySingleton1  *LazySingleton1::p = nullptr;
+pthread_mutex_t LazySingleton::mutex;
+LazySingleton  *LazySingleton::p = nullptr;
 
-LazySingleton1 *LazySingleton1::getInstance()
+LazySingleton *LazySingleton::getInstance()
 {
     if (p == nullptr)
     {
         pthread_mutex_lock(&mutex);
         if (p == nullptr)
-            p = new LazySingleton1();
+            p = new LazySingleton();
         pthread_mutex_unlock(&mutex);
     }
     return p;
@@ -45,8 +45,8 @@ LazySingleton1 *LazySingleton1::getInstance()
 
 int main()
 {
-    auto s1 = LazySingleton1::getInstance();
-    auto s2 = LazySingleton1::getInstance();
+    auto s1 = LazySingleton::getInstance();
+    auto s2 = LazySingleton::getInstance();
 
     printf("s1:%p\n", s1);
     printf("s2:%p\n", s2);
