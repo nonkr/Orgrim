@@ -2,7 +2,7 @@
  * Copyright (c) 2017, Billie Soong <nonkr@hotmail.com>
  * All rights reserved.
  *
- * This file is under GPL, see LICENSE for details.
+ * This file is under MIT, see LICENSE for details.
  *
  * Author: Billie Soong <nonkr@hotmail.com>
  * Datetime: 2017/12/28 20:20
@@ -14,37 +14,19 @@
 #include <memory.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <termios.h>
-#include <sys/select.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <signal.h>
 #include <math.h>
 #include <errno.h>
 #include "../../color.h"
+#include "serial.h"
 
 #define UART_BUFF_MEX_LEN 1680
 static const int PacketHeader = 0xAA;
 static const int MAX_LEN      = UART_BUFF_MEX_LEN;  //缓冲区最大长度
 
-int speed_arr[]               = {B1500000, B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400,
-                                 B19200,
-                                 B9600, B4800,
-                                 B2400, B1200, B300,};
-int name_arr[]                = {1500000, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600,
-                                 4800,
-                                 2400, 1200,
-                                 300,};
-
-typedef unsigned char UINT8;
-
-int  m_Usartfd;
-int  m_nSpeed;
-int  m_nDatabits;
-int  m_nStopbits;
-char m_nParity;
+int g_nUsartfd;
 
 #define MAP_PIXELS 128
 #define MAPDATA_FRAME_MAX_BYTES 100
@@ -72,113 +54,6 @@ static unsigned char g_ucFrameNo                 = 1;
 static int           g_iReplyErrorCount          = 0;
 
 static unsigned int m_CRCTable[CRC_TABLE_SIZE] = {};
-
-static int set_speed()
-{
-    UINT8          i;
-    int            status;
-    struct termios Opt;
-    tcgetattr(m_Usartfd, &Opt);
-    for (i = 0; i < (sizeof(speed_arr) / sizeof(speed_arr[0])); i++)
-    {
-        if (m_nSpeed == name_arr[i])
-        {
-            tcflush(m_Usartfd, TCIOFLUSH);
-            cfsetispeed(&Opt, speed_arr[i]);
-            cfsetospeed(&Opt, speed_arr[i]);
-            status = tcsetattr(m_Usartfd, TCSANOW, &Opt);
-            if (status != 0)
-            {
-                perror("tcsetattr fd1");
-                return -1;
-            }
-            tcflush(m_Usartfd, TCIOFLUSH);
-        }
-    }
-    return 0;
-}
-
-static int set_Parity()
-{
-    struct termios options;
-    if (tcgetattr(m_Usartfd, &options) != 0)
-    {
-        perror("SetupSerial 1");
-        return -1;
-    }
-    options.c_cflag &= ~CSIZE;
-    switch (m_nDatabits)
-    {
-        case 7:
-            options.c_cflag |= CS7;
-            break;
-        case 8:
-            options.c_cflag |= CS8;
-            break;
-        default:
-            fprintf(stderr, "Unsupported data size\n");
-            return -1;
-    }
-    switch (m_nParity)
-    {
-        case 'n':
-        case 'N':
-            options.c_cflag &= ~PARENB;    /* Clear parity enable */
-            options.c_iflag &= ~INPCK;    /* Enable parity checking */
-            break;
-        case 'o':
-        case 'O':
-            options.c_cflag |= (PARODD | PARENB);
-            options.c_iflag |= INPCK;    /* Disnable parity checking */
-            break;
-        case 'e':
-        case 'E':
-            options.c_cflag |= PARENB;    /* Enable parity */
-            options.c_cflag &= ~PARODD;
-            options.c_iflag |= INPCK;    /* Disnable parity checking */
-            break;
-        case 'S':
-        case 's':            /*as no parity */
-            options.c_cflag &= ~PARENB;
-            options.c_cflag &= ~CSTOPB;
-            break;
-        default:
-            fprintf(stderr, "Unsupported parity\n");
-            return -1;
-    }
-
-    switch (m_nStopbits)
-    {
-        case 1:
-            options.c_cflag &= ~CSTOPB;
-            break;
-        case 2:
-            options.c_cflag |= CSTOPB;
-            break;
-        default:
-            fprintf(stderr, "Unsupported stop bits\n");
-            return -1;
-    }
-
-    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /*Input*/
-    options.c_oflag &= ~OPOST;                          /*Output*/
-
-    // reference: https://linux.die.net/man/3/cfmakeraw
-    cfmakeraw(&options);
-
-    /* Set input parity option */
-    if (m_nParity != 'n')
-        options.c_iflag |= INPCK;
-    tcflush(m_Usartfd, TCIFLUSH);
-    options.c_cc[VTIME] = 150;
-    options.c_cc[VMIN]  = 0;    /* Update the options and do it NOW */
-    if (tcsetattr(m_Usartfd, TCSANOW, &options) != 0)
-    {
-        perror("SetupSerial 3");
-        return -1;
-    }
-    return 0;
-}
 
 int hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *p_i_out_len)
 {
@@ -607,7 +482,7 @@ void *SendThread(void *arg)
             g_uiTotalMapDataLeft -= MAPDATA_FRAME_MAX_BYTES * 4;
 
             print_as_hexstring(1, (char *) pBuff, iBuffLen);
-            write(m_Usartfd, pBuff, iBuffLen);
+            write(g_nUsartfd, pBuff, iBuffLen);
             if (pBuff)
             {
                 free(pBuff);
@@ -646,18 +521,18 @@ void *RecvThread(void *arg)
     while (1)
     {
         FD_ZERO(&rd);
-        FD_SET(m_Usartfd, &rd);
+        FD_SET(g_nUsartfd, &rd);
         memset(g_ReadBuff, 0, sizeof(g_ReadBuff));
-        while (FD_ISSET(m_Usartfd, &rd))
+        while (FD_ISSET(g_nUsartfd, &rd))
         {
             printf(".\n");
-            if (select(m_Usartfd + 1, &rd, NULL, NULL, NULL) < 0)
+            if (select(g_nUsartfd + 1, &rd, NULL, NULL, NULL) < 0)
             {
                 perror("select error\n");
             }
             else
             {
-//                iReadLen = read(m_Usartfd, g_ReadBuff, MAX_LEN);
+//                iReadLen = read(g_nUsartfd, g_ReadBuff, MAX_LEN);
 //                OGM_PRINT_ORANGE("read_len:[%d]\n", iReadLen);
 //                OGM_PRINT_ORANGE("Reply:[");
 //                print_as_hexstring(0, g_ReadBuff, iReadLen);
@@ -665,7 +540,7 @@ void *RecvThread(void *arg)
 
                 if (state == 0)
                 {
-                    iReadLen = read(m_Usartfd, g_ReadBuff, 1);
+                    iReadLen = read(g_nUsartfd, g_ReadBuff, 1);
                     if (iReadLen == 1 && (*(g_ReadBuff) & 0xFF) == PacketHeader)
                     {
                         state = 1;
@@ -674,7 +549,7 @@ void *RecvThread(void *arg)
                 }
                 else if (state == 1)
                 {
-                    iReadLen = read(m_Usartfd, g_ReadBuff + recv_len, 2);
+                    iReadLen = read(g_nUsartfd, g_ReadBuff + recv_len, 2);
                     if (iReadLen == 1)
                     {
                         state    = 2;
@@ -690,7 +565,7 @@ void *RecvThread(void *arg)
                 }
                 else if (state == 2)
                 {
-                    iReadLen = read(m_Usartfd, g_ReadBuff + recv_len, 1);
+                    iReadLen = read(g_nUsartfd, g_ReadBuff + recv_len, 1);
                     if (iReadLen == 1)
                     {
                         state = 3;
@@ -701,7 +576,7 @@ void *RecvThread(void *arg)
                 else
                 {
                     static int last = 0;
-                    iReadLen = read(m_Usartfd, g_ReadBuff + recv_len + last, len_temp - last);
+                    iReadLen = read(g_nUsartfd, g_ReadBuff + recv_len + last, len_temp - last);
                     if (iReadLen < (len_temp - last) && iReadLen > 0)
                     {
                         last += iReadLen;
@@ -730,7 +605,7 @@ void *RecvThread(void *arg)
 void signal_handler(int signum)
 {
     printf("Interrupt signal (%d) received.\n", signum);
-    close(m_Usartfd);
+    close(g_nUsartfd);
 
     OGM_PRINT_CYAN("Total recv count:[%llu]\nTotal error recv count:[%llu]\nTotal error recv per:[%.2f%%]\n",
                    g_ullTotalRecvCount,
@@ -742,37 +617,47 @@ void signal_handler(int signum)
 
 int main(int argc, char **argv)
 {
-    m_Usartfd   = -1;
-    m_nSpeed    = 115200;
-    m_nDatabits = 8;
-    m_nStopbits = 1;
-    m_nParity   = 'n';
+    int  nSpeed    = 115200;
+    int  nDatabits = 8;
+    int  nStopbits = 1;
+    char nParity   = 'n';
+    char *pDevice  = "/dev/ttyS1";
 
-    if (argc < 3)
+    if (argc == 2)
     {
-        printf("Usage: %s /dev/ttyS1 path/to/mapdata\n", argv[0]);
-        exit(2);
+        pDevice = argv[1];
+    }
+    else if (argc == 3)
+    {
+        pDevice = argv[1];
+        nSpeed  = strtol(argv[2], NULL, 0);
+    }
+    else if (argc == 4)
+    {
+        pDevice = argv[1];
+        nSpeed  = strtol(argv[2], NULL, 0);
+        if (ReadMapDataFromFile(argv[3]))
+        {
+            exit(3);
+        }
     }
 
-    if (ReadMapDataFromFile(argv[2]))
-    {
-        exit(3);
-    }
+    printf("use tty:%s baud:%d\n", pDevice, nSpeed);
 
-    m_Usartfd = open(argv[1], O_RDWR | O_NOCTTY | O_NDELAY);
-    if (m_Usartfd == -1)
+    g_nUsartfd = open(pDevice, O_RDWR | O_NOCTTY | O_NDELAY);
+    if (g_nUsartfd == -1)
     {
-        perror("can't open serial port,UsartInit failed!");
+        perror("open serial failed");
         return -1;
     }
-    if (set_speed() < 0)
+    if (set_speed(g_nUsartfd, nSpeed) < 0)
     {
-        printf("set_speed failed!\n");
+        printf("set_speed failed\n");
         return -1;
     }
-    if (set_Parity() < 0)
+    if (set_Parity(g_nUsartfd, nDatabits, nStopbits, nParity) < 0)
     {
-        printf("set_Parity failed!\n");
+        printf("set_Parity failed\n");
         return -1;
     }
 

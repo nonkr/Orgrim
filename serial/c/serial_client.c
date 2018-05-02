@@ -2,7 +2,7 @@
  * Copyright (c) 2017, Billie Soong <nonkr@hotmail.com>
  * All rights reserved.
  *
- * This file is under GPL, see LICENSE for details.
+ * This file is under MIT, see LICENSE for details.
  *
  * Author: Billie Soong <nonkr@hotmail.com>
  * Datetime: 2018/1/4 16:35
@@ -25,9 +25,12 @@
 
 extern HIST_ENTRY **history_list();
 
+int sock_fd;
+
 void SignalHandler(int signum)
 {
     OGM_PRINT_CYAN("Interrupt signal (%d) received.\n", signum);
+    close(sock_fd);
     exit(signum);
 }
 
@@ -38,13 +41,13 @@ int main()
     signal(SIGKILL, SignalHandler);
 
     //创建套接字
-    int sock_fd = socket(PF_INET, SOCK_STREAM, 0);
+    sock_fd = socket(PF_INET, SOCK_STREAM, 0);
 
     //向服务器（特定的IP和端口）发起请求
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));  //每个字节都用0填充
     serv_addr.sin_family      = AF_INET;  //使用IPv4地址
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");  //具体的IP地址
+    serv_addr.sin_addr.s_addr = INADDR_ANY;  //具体的IP地址
     serv_addr.sin_port        = htons(4433);  //端口
     connect(sock_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
 

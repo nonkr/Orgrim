@@ -2,7 +2,7 @@
  * Copyright (c) 2017, Billie Soong <nonkr@hotmail.com>
  * All rights reserved.
  *
- * This file is under GPL, see LICENSE for details.
+ * This file is under MIT, see LICENSE for details.
  *
  * Author: Billie Soong <nonkr@hotmail.com>
  * Datetime: 2017/12/28 20:20
@@ -14,149 +14,25 @@
 #include <memory.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <termios.h>
-#include <sys/select.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <signal.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include "../../color.h"
+#include "serial.h"
 
 #define MAX_SENDBUFF_LEN (1025 * 16)
 #define MAX_SOCKET_READ_LEN (MAX_SENDBUFF_LEN * 3)
-static const int PacketHeader = 0xAA;
-static const int MAX_LEN      = MAX_SENDBUFF_LEN;  //缓冲区最大长度
+static const int PacketHeader  = 0xAA;
+static const int MAX_LEN       = MAX_SENDBUFF_LEN;  //缓冲区最大长度
 
-int speed_arr[]                = {B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400, B19200,
-                                  B9600, B4800,
-                                  B2400, B1200, B300,};
-int name_arr[]                 = {115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
-                                  2400, 1200,
-                                  300,};
-
-typedef unsigned char UINT8;
-
-int  m_Usartfd;
-int  m_nSpeed;
-int  m_nDatabits;
-int  m_nStopbits;
-char m_nParity;
+int server_fd;
+int g_nUsartfd;
 
 pthread_mutex_t g_mutex_sendbuff;
 pthread_cond_t  g_cond_sendbuff;
 static int      g_sendbuff_len = 0;
 static char     g_sendbuff[MAX_SENDBUFF_LEN];
-
-static int set_speed()
-{
-    UINT8          i;
-    int            status;
-    struct termios Opt;
-    tcgetattr(m_Usartfd, &Opt);
-    for (i = 0; i < (sizeof(speed_arr) / sizeof(speed_arr[0])); i++)
-    {
-        if (m_nSpeed == name_arr[i])
-        {
-            tcflush(m_Usartfd, TCIOFLUSH);
-            cfsetispeed(&Opt, speed_arr[i]);
-            cfsetospeed(&Opt, speed_arr[i]);
-            status = tcsetattr(m_Usartfd, TCSANOW, &Opt);
-            if (status != 0)
-            {
-                perror("tcsetattr fd1");
-                return -1;
-            }
-            tcflush(m_Usartfd, TCIOFLUSH);
-        }
-    }
-    return 0;
-}
-
-static int set_Parity()
-{
-    struct termios options;
-    if (tcgetattr(m_Usartfd, &options) != 0)
-    {
-        perror("SetupSerial 1");
-        return -1;
-    }
-    options.c_cflag &= ~CSIZE;
-    switch (m_nDatabits)
-    {
-        case 7:
-            options.c_cflag |= CS7;
-            break;
-        case 8:
-            options.c_cflag |= CS8;
-            break;
-        default:
-            fprintf(stderr, "Unsupported data size\n");
-            return -1;
-    }
-    switch (m_nParity)
-    {
-        case 'n':
-        case 'N':
-            options.c_cflag &= ~PARENB;    /* Clear parity enable */
-            options.c_iflag &= ~INPCK;    /* Enable parity checking */
-            break;
-        case 'o':
-        case 'O':
-            options.c_cflag |= (PARODD | PARENB);
-            options.c_iflag |= INPCK;    /* Disnable parity checking */
-            break;
-        case 'e':
-        case 'E':
-            options.c_cflag |= PARENB;    /* Enable parity */
-            options.c_cflag &= ~PARODD;
-            options.c_iflag |= INPCK;    /* Disnable parity checking */
-            break;
-        case 'S':
-        case 's':            /*as no parity */
-            options.c_cflag &= ~PARENB;
-            options.c_cflag &= ~CSTOPB;
-            break;
-        default:
-            fprintf(stderr, "Unsupported parity\n");
-            return -1;
-    }
-
-    switch (m_nStopbits)
-    {
-        case 1:
-            options.c_cflag &= ~CSTOPB;
-            break;
-        case 2:
-            options.c_cflag |= CSTOPB;
-            break;
-        default:
-            fprintf(stderr, "Unsupported stop bits\n");
-            return -1;
-    }
-
-    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /*Input*/
-    options.c_oflag &= ~OPOST;                          /*Output*/
-
-    // reference: https://linux.die.net/man/3/cfmakeraw
-    cfmakeraw(&options);
-
-    /* Set input parity option */
-    if (m_nParity != 'n')
-        options.c_iflag |= INPCK;
-    tcflush(m_Usartfd, TCIFLUSH);
-    options.c_cc[VTIME] = 150;
-    options.c_cc[VMIN]  = 0;    /* Update the options and do it NOW */
-    if (tcsetattr(m_Usartfd, TCSANOW, &options) != 0)
-    {
-        perror("SetupSerial 3");
-        return -1;
-    }
-    return 0;
-}
 
 int hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *p_i_out_len)
 {
@@ -282,9 +158,9 @@ void *SendThread(void *arg)
 
         while (g_sendbuff_len <= 0)
         {
-            printf("before pthread_cond_wait\n");
+//            printf("before pthread_cond_wait\n");
             pthread_cond_wait(&g_cond_sendbuff, &g_mutex_sendbuff);
-            printf("after pthread_cond_wait\n");
+//            printf("after pthread_cond_wait\n");
         }
 
         if (g_sendbuff_len >= MAX_LEN)
@@ -294,7 +170,7 @@ void *SendThread(void *arg)
         }
         else
         {
-            writeLen = write(m_Usartfd, g_sendbuff, g_sendbuff_len);
+            writeLen = write(g_nUsartfd, g_sendbuff, g_sendbuff_len);
 
             if (writeLen < 0)
             {
@@ -342,17 +218,17 @@ void *RecvThread(void *arg)
     while (1)
     {
         FD_ZERO(&rd);
-        FD_SET(m_Usartfd, &rd);
+        FD_SET(g_nUsartfd, &rd);
         memset(buf, 0, sizeof(buf));
-        while (FD_ISSET(m_Usartfd, &rd))
+        while (FD_ISSET(g_nUsartfd, &rd))
         {
-            if (select(m_Usartfd + 1, &rd, NULL, NULL, NULL) < 0)
+            if (select(g_nUsartfd + 1, &rd, NULL, NULL, NULL) < 0)
             {
                 perror("select error\n");
             }
             else
             {
-//                iReadLen = read(m_Usartfd, buf, MAX_LEN);
+//                iReadLen = read(g_nUsartfd, buf, MAX_LEN);
 //                OGM_PRINT_ORANGE("read_len:[%d]\n", iReadLen);
 //                OGM_PRINT_ORANGE("Reply:[");
 //                print_as_hexstring((char *) buf, iReadLen);
@@ -360,16 +236,20 @@ void *RecvThread(void *arg)
 
                 if (state == 0)
                 {
-                    iReadLen = read(m_Usartfd, buf, 1);
+                    iReadLen = read(g_nUsartfd, buf, 1);
                     if (iReadLen == 1 && (*(buf) & 0xFF) == PacketHeader)
                     {
                         state = 1;
                         recv_len += iReadLen;
                     }
+                    else
+                    {
+                        printf("Recv Wrong Code: [%02X]\n", *(buf));
+                    }
                 }
                 else if (state == 1)
                 {
-                    iReadLen = read(m_Usartfd, buf + recv_len, 2);
+                    iReadLen = read(g_nUsartfd, buf + recv_len, 2);
                     if (iReadLen == 1)
                     {
                         state    = 2;
@@ -385,7 +265,7 @@ void *RecvThread(void *arg)
                 }
                 else if (state == 2)
                 {
-                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
+                    iReadLen = read(g_nUsartfd, buf + recv_len, 1);
                     if (iReadLen == 1)
                     {
                         state = 3;
@@ -396,7 +276,7 @@ void *RecvThread(void *arg)
                 else
                 {
                     static int last = 0;
-                    iReadLen = read(m_Usartfd, buf + recv_len + last, len_temp - last);
+                    iReadLen = read(g_nUsartfd, buf + recv_len + last, len_temp - last);
                     if (iReadLen < (len_temp - last) && iReadLen > 0)
                     {
                         last += iReadLen;
@@ -421,15 +301,24 @@ void *RecvThread(void *arg)
 
 void *ServerSocketThread(void *arg)
 {
-    //创建套接字
-    int server_fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    // 创建套接字
+    server_fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     //将套接字和IP、端口绑定
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));  //每个字节都用0填充
     server_addr.sin_family      = AF_INET;  //使用IPv4地址
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");  //具体的IP地址
+    server_addr.sin_addr.s_addr = INADDR_ANY;  //具体的IP地址
     server_addr.sin_port        = htons(4433);  //端口
+
+    // 设置套接字选项避免地址使用错误
+    int on = 1;
+    if ((setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) < 0)
+    {
+        fprintf(stderr, "setsockopt failed");
+        pthread_exit((void *) 1);
+    }
+
     bind(server_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
 
     //进入监听状态，等待用户发起请求
@@ -439,52 +328,60 @@ void *ServerSocketThread(void *arg)
     struct sockaddr_in client_addr;
 
     socklen_t client_addr_size = sizeof(client_addr);
-    int       client_fd        = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_size);
+    int       client_fd;
 
     int         i_readlen;
     static char readbuff[MAX_SENDBUFF_LEN];
 
     while (1)
     {
-        OGM_PRINT_GREEN("wait...\n");
-        if ((i_readlen = read(client_fd, readbuff, sizeof(readbuff) - 1)) < 0)
+        OGM_PRINT_GREEN("waiting for next connection...\n");
+        client_fd = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_size);
+        while (1)
         {
-            perror("read");
-            pthread_exit((void *) 1);
+            OGM_PRINT_GREEN("waiting for data read...\n");
+            if ((i_readlen = read(client_fd, readbuff, sizeof(readbuff) - 1)) < 0)
+            {
+                perror("read");
+                pthread_exit((void *) 1);
+            }
+            if (i_readlen <= 0)
+            {
+                break;
+            }
+            readbuff[i_readlen] = '\0';
+//        printf("read:[%s]\n", readbuff);
+
+            char *p_buffer    = NULL;
+            int  i_buffer_len = 0;
+            if (hexstring_to_bytearray(readbuff, &p_buffer, &i_buffer_len))
+            {
+                OGM_PRINT_RED("convert failed:[%s]\n", readbuff);
+                continue;
+            }
+
+            pthread_mutex_lock(&g_mutex_sendbuff);
+
+            memcpy(g_sendbuff + g_sendbuff_len, p_buffer, i_buffer_len);
+            g_sendbuff_len += i_buffer_len;
+
+            pthread_cond_broadcast(&g_cond_sendbuff);
+            pthread_mutex_unlock(&g_mutex_sendbuff);
+
+            if (p_buffer)
+            {
+                free(p_buffer);
+                p_buffer = NULL;
+            }
         }
-        if (i_readlen <= 0)
-        {
-            break;
-        }
-        readbuff[i_readlen] = '\0';
-        printf("read:[%s]\n", readbuff);
 
-        char *p_buffer    = NULL;
-        int  i_buffer_len = 0;
+        printf("close client socket\n");
 
-        if (hexstring_to_bytearray(readbuff, &p_buffer, &i_buffer_len))
-        {
-            OGM_PRINT_RED("convert failed:[%s]\n", readbuff);
-            continue;
-        }
-
-        pthread_mutex_lock(&g_mutex_sendbuff);
-
-        memcpy(g_sendbuff + g_sendbuff_len, p_buffer, i_buffer_len);
-        g_sendbuff_len += i_buffer_len;
-
-        pthread_cond_broadcast(&g_cond_sendbuff);
-        pthread_mutex_unlock(&g_mutex_sendbuff);
-
-        if (p_buffer)
-        {
-            free(p_buffer);
-            p_buffer = NULL;
-        }
+        //关闭套接字
+        close(client_fd);
     }
 
-    //关闭套接字
-    close(client_fd);
+    printf("close server socket\n");
     close(server_fd);
 
     pthread_exit((void *) 0);
@@ -493,38 +390,45 @@ void *ServerSocketThread(void *arg)
 void signal_handler(int signum)
 {
     printf("Interrupt signal (%d) received.\n", signum);
-    close(m_Usartfd);
+    close(server_fd);
+    close(g_nUsartfd);
     exit(signum);
 }
 
 int main(int argc, char **argv)
 {
-    m_Usartfd   = -1;
-    m_nSpeed    = 115200;
-    m_nDatabits = 8;
-    m_nStopbits = 1;
-    m_nParity   = 'n';
+    int  nSpeed    = 115200;
+    int  nDatabits = 8;
+    int  nStopbits = 1;
+    char nParity   = 'n';
+    char *pDevice  = "/dev/ttyS1";
 
-    if (argc < 2)
+    if (argc == 2)
     {
-        printf("Usage: %s /dev/ttyS1\n", argv[0]);
-        exit(2);
+        pDevice = argv[1];
+    }
+    else if (argc == 3)
+    {
+        pDevice = argv[1];
+        nSpeed  = strtol(argv[2], NULL, 0);
     }
 
-    m_Usartfd = open(argv[1], O_RDWR | O_NOCTTY | O_NDELAY);
-    if (m_Usartfd == -1)
+    printf("use tty:%s baud:%d\n", pDevice, nSpeed);
+
+    g_nUsartfd = open(pDevice, O_RDWR | O_NOCTTY | O_NDELAY);
+    if (g_nUsartfd == -1)
     {
-        perror("can't open serial port,UsartInit failed!");
+        perror("open serial failed");
         return -1;
     }
-    if (set_speed() < 0)
+    if (set_speed(g_nUsartfd, nSpeed) < 0)
     {
-        printf("set_speed failed!\n");
+        printf("set_speed failed\n");
         return -1;
     }
-    if (set_Parity() < 0)
+    if (set_Parity(g_nUsartfd, nDatabits, nStopbits, nParity) < 0)
     {
-        printf("set_Parity failed!\n");
+        printf("set_Parity failed\n");
         return -1;
     }
 
