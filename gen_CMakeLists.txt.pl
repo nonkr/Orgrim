@@ -21,7 +21,7 @@ if (scalar(@EXCLUDES) != 0)
 }
 
 # add reg which you want to exclude
-my @src_files = `find . $EXCLUDES_STR -name "*.c" -print -o -name "*.cpp" -print -o -name "*.cc" -print -o -name "*.h" -print -o -name "Makefile*" -print`;
+my @src_files = `find . $EXCLUDES_STR -name "*.c" -print -o -name "*.cpp" -print -o -name "*.cc" -print -o -name "*.h" -print -o -name "*.hpp" -print -o -name "Makefile*" -print`;
 
 open(my $fh, ">", "CMakeLists.txt");
 
