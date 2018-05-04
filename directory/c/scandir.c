@@ -32,6 +32,7 @@ int main(int argc, char **argv)
         {
             if (!strcmp(namelist[n]->d_name, ".") || !strcmp(namelist[n]->d_name, ".."))
             {
+                free(namelist[n]);
                 continue;
             }
             printf("%s\n", namelist[n]->d_name);
