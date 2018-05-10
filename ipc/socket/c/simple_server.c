@@ -37,23 +37,23 @@ void handleClient(int fd)
             int bytes = read(fd, buf, sizeof(buf));
             if (bytes > 0)
             {
-                // got data from the client.
-                printf("Message form server: %s\n", buf);
+                printf("Message form client: %s\n", buf);
             }
             else if (bytes == 0)
             {
-                // client disconnected.
+                printf("client disconnected\n");
                 break;
             }
             else
             {
+                printf("error read\n");
                 // error receiving data from client. You may want to break from
                 // while-loop here as well.
             }
         }
         else if (sel < 0)
         {
-            // grave error occurred.
+            printf("grave error occurred\n");
             break;
         }
     }
