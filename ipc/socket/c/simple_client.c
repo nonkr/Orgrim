@@ -17,9 +17,8 @@
 
 int main()
 {
-    int server_fd;
+    int                server_fd;
     struct sockaddr_in server_addr;
-    ssize_t readbytes;
 
     // 创建套接字
     if ((server_fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1)
@@ -30,21 +29,18 @@ int main()
 
     // 向服务器（特定的IP和端口）发起请求
     memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
+    server_addr.sin_family      = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(1234);
+    server_addr.sin_port        = htons(1234);
     if ((connect(server_fd, (struct sockaddr *) &server_addr, sizeof(server_addr))) == -1)
     {
         perror("connect failed\n");
         exit(2);
     }
 
-    // 读取服务器传回的数据
-    char buffer[40];
-    readbytes = read(server_fd, buffer, sizeof(buffer) - 1);
-
-    printf("readbytes:%zu\n", readbytes);
-    printf("Message form server: %s\n", buffer);
+    char str[] = "Hello World!";
+    write(server_fd, str, sizeof(str));
+    printf("Send data:[%s]\n", str);
 
     // 关闭套接字
     close(server_fd);
