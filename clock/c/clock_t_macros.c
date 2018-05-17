@@ -13,12 +13,13 @@
 #include <math.h>
 #include <stdio.h>
 
-#define TICK(X) clock_t X = clock()
-#define TOCK(X) printf("time %s: %g sec.\n", (#X), (double)(clock() - (X)) / CLOCKS_PER_SEC)
+#define TICK(S) clock_t S = clock()
+#define TOCK(S, E, LABEL) clock_t E = clock(); \
+                          printf("Time duration of %s: %g sec.\n", LABEL, (double)((E) - (S)) / CLOCKS_PER_SEC);
 
 int main()
 {
-    TICK(aa);
+    TICK(a);
 
     // 一段计算
     for (int i = 0; i < 1000000; i++)
@@ -26,7 +27,13 @@ int main()
         pow(2, i);
     }
 
-    TOCK(aa);
+    TOCK(a, b, "First");
+
+    for (int i = 0; i < 1000000; i++)
+    {
+        pow(2, i);
+    }
+    TOCK(b, c, "Second");
 
     return 0;
 }
