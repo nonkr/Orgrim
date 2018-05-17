@@ -17,17 +17,17 @@
 using namespace std;
 using namespace chrono;
 
-#define TICK(X) auto X = system_clock::now();
+#define GCLOCK system_clock::time_point
+#define TICK(S) GCLOCK S = system_clock::now();
+#define TOCK(S, E, LABEL) GCLOCK E = system_clock::now(); \
+                do { \
+                    auto duration = duration_cast<microseconds>((E) - (S)); \
+                    printf("Time duration of %s: %.3f sec.\n", LABEL, double(duration.count()) * microseconds::period::num / microseconds::period::den); \
+                } while(false);
 #define GTICK(X) do { \
                     X = system_clock::now(); \
                  } while(false);
-#define TOCK(X, LABEL) do { \
-                    auto end      = system_clock::now(); \
-                    auto duration = duration_cast<microseconds>(end - (X)); \
-                    printf("Time duration of %s: %.3f sec.\n", LABEL, double(duration.count()) * microseconds::period::num / microseconds::period::den); \
-                } while(false);
-#define GTOCK(X, LABEL) TOCK(X, LABEL)
-#define GCLOCK system_clock::time_point
+#define GTOCK TOCK
 
 GCLOCK g_A;
 
@@ -38,7 +38,7 @@ void a()
 
 void b()
 {
-    GTOCK(g_A, "Global");
+    GTOCK(g_A, g_B, "Global");
 }
 
 int main()
@@ -53,7 +53,17 @@ int main()
     }
     b();
 
-    TOCK(aa, "Local");
+    TOCK(aa, bb, "First");
+
+    a();
+    // 一段计算
+    for (int i = 0; i < 1000000; i++)
+    {
+        pow(2, i);
+    }
+    b();
+
+    TOCK(bb, cc, "Second");
 
     return 0;
 }
