@@ -31,10 +31,10 @@ int main()
 {
     map<string, Student *> mapStudents;
 
-    auto *pStudent1 = new Student;
+    Student *pStudent1 = new Student;
     pStudent1->age = 12;
 
-    auto *pStudent2 = new Student;
+    Student *pStudent2 = new Student;
     pStudent2->age = 20;
 
     printf("pStudent1: %s\n", typeid(*pStudent1).name());
@@ -47,7 +47,14 @@ int main()
         mapStudents[typeid(*pStudent2).name()] = pStudent2;
     }
 
+    // iterate way 1
     for (const auto &n : mapStudents)
+    {
+        printf("age: %d\n", n.second->age);
+    }
+
+    // iterate way 2
+    for (const std::pair<string, Student *> n : mapStudents)
     {
         printf("age: %d\n", n.second->age);
     }
