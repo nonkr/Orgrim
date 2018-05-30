@@ -12,6 +12,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include <unistd.h>
 
 int main()
 {
@@ -19,12 +20,32 @@ int main()
     clock_t t1 = clock();
 
     // 一段计算
-    for (int i = 0; i < 1000000; i++)
-    {
-        pow(2, i);
-    }
+//    for (int i = 0; i < 1000000; i++)
+//    {
+//        pow(2, i);
+//    }
+    sleep(1);
 
     // 计算clock差，除以clock数/每秒，即可求出秒数
-    printf("%f\n", (clock() - t1) * 1.0 / CLOCKS_PER_SEC);
+    printf("%f\n", (double) (clock() - t1) / CLOCKS_PER_SEC);
+
+    clock_t old = 0;
+    clock_t tmp;
+
+    while (1)
+    {
+        sleep(1);
+        if (old == 0)
+        {
+            old = clock();
+        }
+        else
+        {
+            tmp = clock();
+            printf("### %f s\n", (tmp - old) * 1.0 / CLOCKS_PER_SEC);
+            old = tmp;
+        }
+    }
+
     return 0;
 }
