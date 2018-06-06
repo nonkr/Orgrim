@@ -112,5 +112,13 @@ int main()
     }
     cout << "========" << endl;
 
+    Scores.erase(Scores.begin(), Scores.end());
+    cout << "==== after erase() ====" << endl;
+    for (auto n : Scores)
+    {
+        cout << n << endl;
+    }
+    cout << "========" << endl;
+
     return 0;
 }

@@ -29,10 +29,10 @@ int main()
 {
     set<Student *> setStudents;
 
-    auto *pStudent1 = new Student;
+    Student *pStudent1 = new Student;
     pStudent1->age = 12;
 
-    auto *pStudent2 = new Student;
+    Student *pStudent2 = new Student;
     pStudent2->age = 20;
 
     printf("pStudent1: %s\n", typeid(pStudent1).name());
@@ -41,9 +41,10 @@ int main()
     setStudents.insert(pStudent1);
     setStudents.insert(pStudent2);
 
-    for (auto n : setStudents)
+    for (Student *n : setStudents)
     {
         printf("age: %d\n", n->age);
+        delete n;
     }
 
     return 0;
