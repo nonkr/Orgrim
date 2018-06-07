@@ -14,20 +14,13 @@
 #include <memory.h>
 #include <openssl/md5.h>
 
-int main()
+int BinaryCompare(const unsigned char *pBin1, size_t sLen1, const unsigned char *pBin2, size_t sLen2)
 {
     unsigned char digest1[16];
     unsigned char digest2[16];
-    short         a[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    short         b[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    MD5((unsigned char *) a, sizeof(a), digest1);
-    MD5((unsigned char *) b, sizeof(b), digest2);
-
-    if (memcmp(digest1, digest2, sizeof(digest1)) == 0)
-    {
-        printf("same\n");
-    }
+    MD5(pBin1, sLen1, digest1);
+    MD5(pBin2, sLen2, digest2);
 
     char md5string1[33];
     char md5string2[33];
@@ -40,6 +33,19 @@ int main()
 
     printf("%s\n", md5string1);
     printf("%s\n", md5string2);
+
+    return memcmp(digest1, digest2, sizeof(digest1));
+}
+
+int main()
+{
+    short a[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    short b[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+    if (BinaryCompare((unsigned char *) a, sizeof(a), (unsigned char *) b, sizeof(b)) == 0)
+    {
+        printf("same\n");
+    }
 
     return 0;
 }
