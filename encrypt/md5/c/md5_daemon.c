@@ -24,6 +24,11 @@ int main()
     MD5((unsigned char *) a, sizeof(a), digest1);
     MD5((unsigned char *) b, sizeof(b), digest2);
 
+    if (memcmp(digest1, digest2, sizeof(digest1)) == 0)
+    {
+        printf("same\n");
+    }
+
     char md5string1[33];
     char md5string2[33];
 
@@ -31,11 +36,6 @@ int main()
     {
         sprintf(&md5string1[i * 2], "%02x", (unsigned int) digest1[i]);
         sprintf(&md5string2[i * 2], "%02x", (unsigned int) digest2[i]);
-    }
-
-    if (memcmp(md5string1, md5string2, sizeof(md5string1)) == 0)
-    {
-        printf("same\n");
     }
 
     printf("%s\n", md5string1);
