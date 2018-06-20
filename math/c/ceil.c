@@ -11,12 +11,14 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <stdint.h>
 
 int main()
 {
     float          val1, val2, val3, val4;
     unsigned short val5, val6;
     short          val7;
+    int8_t         c; // safe to use int8_t in ARM
 
     val1 = 1.6;
     val2 = 1.2;
@@ -24,7 +26,8 @@ int main()
     val4 = 2.3;
     val5 = 8888;
     val6 = 3276;
-    val7 = -101;
+    val7 = -41;
+    c    = val7 > 0 ? (int8_t) (ceil((float) val7 / 10)) : (int8_t) (floor((float) val7 / 10));
 
     printf("value1 = %.1lf\n", ceil(val1));
     printf("value2 = %.1lf\n", ceil(val2));
@@ -33,7 +36,7 @@ int main()
     printf("value5 = %.1lf\n", ceil((float) val5 / 10));
     printf("value6 = %.1lf\n", ceil((float) val6 / 10));
     printf("value6 = %u\n", (unsigned char) ceil((float) val6 / 10));
-    printf("value7 = %.1lf\n", val7 > 0 ? ceil((float) val7 / 10) : floor((float) val7 / 10));
+    printf("value7 = %d\n", c);
 
     return (0);
 }
