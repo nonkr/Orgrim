@@ -43,7 +43,11 @@ int main(int argc, char *argv[])
     }
 
     nTotalSize = fp.tellg();
+#if __x86_64__
+    printf("total file size:[%lu]\n", nTotalSize);
+#else
     printf("total file size:[%llu]\n", nTotalSize);
+#endif
 
     double dTotalDuration = 0;
     double dAvgDuration   = 0;
@@ -64,6 +68,17 @@ int main(int argc, char *argv[])
             frame++;
             dTotalDuration += dDuration;
             dAvgDuration = dTotalDuration / frame;
+#if __x86_64__
+            printf("frame:[%d/%.0lf] readSize:[%ld] nTotalReadSize:[%lu] buffLeft:[%lu] dTotalDuration:[%fs] dAvgDuration:[%fs]\n",
+                   frame,
+                   ceil(((float) nTotalSize / block_size)),
+                   readSize,
+                   nTotalReadSize,
+                   buffLeft,
+                   dTotalDuration,
+                   dAvgDuration
+            );
+#else
             printf("frame:[%d/%.0lf] readSize:[%d] nTotalReadSize:[%llu] buffLeft:[%llu] dTotalDuration:[%fs] dAvgDuration:[%fs]\n",
                    frame,
                    ceil(((float) nTotalSize / block_size)),
@@ -73,6 +88,7 @@ int main(int argc, char *argv[])
                    dTotalDuration,
                    dAvgDuration
             );
+#endif
         }
     } while (readSize > 0);
 
