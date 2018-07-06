@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-# Options. Turn on with 'cmake -Dmyvarname=ON'.
+# Options. Turn on with 'cmake -Dtest=ON'.
 option(test "Build all tests." OFF) # Makes boolean 'test' available.
 
 project(cxx_gtest_sample2)
@@ -10,6 +10,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall")
 add_executable(app main.cpp sample.cpp)
 
 if (test)
+    find_package(GTest REQUIRED)
+
+    include_directories(${GTEST_INCLUDE_DIRS})
+
     enable_testing()
 
     ##############
@@ -18,7 +22,7 @@ if (test)
     add_executable(runUnitTests test.cpp sample.cpp)
 
     # Standard linking to gtest stuff.
-    target_link_libraries(runUnitTests gtest gtest_main)
+    target_link_libraries(runUnitTests ${GTEST_BOTH_LIBRARIES})
 
     # This is so you can do 'make test' to see all your tests run, instead of
     # manually running the executable runUnitTests to see those specific tests.
