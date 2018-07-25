@@ -38,10 +38,28 @@ public:
     {
         string ClassName = typeid(*p).name();
         printf("Classname:[%s]\n", ClassName.c_str());
-        fptr(iTopic, (unsigned char *) "", 0);
+        printf("%p\n", fptr);
+        if (iTopic == 1)
+        {
+            a = fptr;
+        }
+        else if (iTopic == 2)
+        {
+            b = fptr;
+        }
+    }
+
+    void CallIt()
+    {
+        printf("%p\n", a);
+        printf("%p\n", b);
+        a(1, (unsigned char *) "", 0);
+        b(2, (unsigned char *) "", 0);
     }
 
 private:
+    fpi a;
+    fpi b;
 
     B()
     {
@@ -85,4 +103,9 @@ int main()
 {
     A *a = new A();
     a->init();
+
+    B &b = B::getInstance();
+    b.CallIt();
+
+    delete a;
 }
