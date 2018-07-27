@@ -37,6 +37,18 @@ void local_variable()
     printHex(foo, sizeof(foo));
 }
 
+void local_dynamic_variable(int size)
+{
+    OGM_PRINT_BLUE("local_dynamic_variable...\n");
+    char foo[size];
+
+    printHex(foo, sizeof(foo));
+
+    foo[0] = 0x01;
+
+    printHex(foo, sizeof(foo));
+}
+
 void local_variable_with_memset()
 {
     OGM_PRINT_BLUE("local_variable_with_memset...\n");
@@ -79,6 +91,9 @@ int main()
 {
     local_variable();
     local_variable();
+
+    local_dynamic_variable(1);
+    local_dynamic_variable(2);
 
     local_variable_with_memset();
     local_variable_with_memset();
