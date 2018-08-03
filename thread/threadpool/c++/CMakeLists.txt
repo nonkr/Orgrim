@@ -9,7 +9,5 @@ aux_source_directory(. DIR_SRCS)
 
 add_executable(sample ${DIR_SRCS})
 
-find_package(Threads)
-if(CMAKE_THREAD_LIBS_INIT)
-    target_link_libraries(sample "${CMAKE_THREAD_LIBS_INIT}")
-endif()
+find_package(Threads REQUIRED)
+target_link_libraries(sample "${CMAKE_THREAD_LIBS_INIT}")
