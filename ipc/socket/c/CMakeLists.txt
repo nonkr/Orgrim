@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(c_threadpool)
+project(c_socket)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
 
