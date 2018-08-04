@@ -7,3 +7,6 @@
 [submodule "thread/c/other_threadpool/threadpool"]
 	path = thread/c/other_threadpool/threadpool
 	url = https://github.com/mbrossard/threadpool.git
+[submodule "thread/threadpool/c/sample2/C-Thread-Pool"]
+	path = thread/threadpool/c/sample2/C-Thread-Pool
+	url = https://github.com/Pithikos/C-Thread-Pool.git
