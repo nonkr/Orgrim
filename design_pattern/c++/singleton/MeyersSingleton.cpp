@@ -7,6 +7,9 @@
  * Author: Billie Soong <nonkr@hotmail.com>
  * Datetime: 2018/3/7 11:31
  *
+ *
+ * NOTE: 本例中的方法适用于单线程和C++11及以后版本的多线程环境，但不适用于C++11之前的多线程环境
+ *
  */
 
 #include <cstdio>
@@ -14,7 +17,12 @@
 class MeyersSingleton
 {
 public:
-    static MeyersSingleton &getInstance();
+    static MeyersSingleton &getInstance()
+    {
+        printf("getInstance\n");
+        static MeyersSingleton instance;
+        return instance;
+    }
 
 private:
     MeyersSingleton()
@@ -31,13 +39,6 @@ private:
 
     MeyersSingleton &operator=(const MeyersSingleton &);
 };
-
-MeyersSingleton &MeyersSingleton::getInstance()
-{
-    printf("getInstance\n");
-    static MeyersSingleton instance;
-    return instance;
-}
 
 int main()
 {

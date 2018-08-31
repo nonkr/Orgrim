@@ -9,3 +9,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
 add_executable(EagerSingleton EagerSingleton.cpp)
 add_executable(LazySingleton LazySingleton.cpp)
 add_executable(MeyersSingleton MeyersSingleton.cpp)
+add_executable(LocalStaticSingleton LocalStaticSingleton.cpp)
+add_executable(PthreadOnceSingleton PthreadOnceSingleton.cpp)
+
+find_package(Threads REQUIRED)
+target_link_libraries(PthreadOnceSingleton "${CMAKE_THREAD_LIBS_INIT}")
