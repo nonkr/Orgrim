@@ -42,28 +42,28 @@ int hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *p_i_out_len)
     if (p_out == NULL)
         return -1;
 
-    unsigned int ui_tmp = 0;
     for (i = 0; i < i_str_len;)
     {
-        if (isxdigit(p_hexstring[i]) == 0 || isxdigit(p_hexstring[i + 1]) == 0)
+        if (isxdigit(p_hexstring[i]) && isxdigit(p_hexstring[i + 1]))
+        {
+            sscanf(p_hexstring + i, "%2x", (unsigned int *) &(p_out[i_offset++]));
+
+            if (i + 2 == i_str_len)
+                break;
+
+            if (p_hexstring[i + 2] != ' ')
+            {
+                fprintf(stderr, "malformed input hex string\n");
+                goto error;
+            }
+
+            i += 3;
+        }
+        else
         {
             fprintf(stderr, "malformed input hex string\n");
             goto error;
         }
-
-        sscanf(p_hexstring + i, "%2x", &ui_tmp);
-        p_out[i_offset++] = (char) ui_tmp;
-
-        if (i + 2 == i_str_len)
-            break;
-
-        if (p_hexstring[i + 2] != ' ')
-        {
-            fprintf(stderr, "malformed input hex string\n");
-            goto error;
-        }
-
-        i += 3;
     }
 
     *pp_out      = p_out;
@@ -78,15 +78,12 @@ error:
 
 void print_as_hexstring(const char *p_data, int i_data_len)
 {
-    int           i;
-    unsigned char check_sum = 0;
+    int i;
     for (i = 0; i < i_data_len; i++)
     {
         printf("%02X", p_data[i] & 0xFF);
-//        if (i >= 2 && i < i_data_len - 1)
-        check_sum += (unsigned char) p_data[i] & 0xFF;
     }
-    printf("\ncheck sum:[0x%02X]\n", check_sum & 0xFF);
+    printf("\n");
 }
 
 int main(int argc, char *argv[])

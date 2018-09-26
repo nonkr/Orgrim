@@ -25,6 +25,8 @@ add_executable(lock_guard mutex/lock_guard.cpp)
 add_executable(unique_lock mutex/unique_lock.cpp)
 
 add_executable(condition_variable condition_variable/condition_variable.cpp)
+add_executable(condition_variable2 condition_variable/condition_variable2.cpp)
+add_executable(condition_variable3 condition_variable/condition_variable3.cpp)
 
 find_package(Threads)
 if(CMAKE_THREAD_LIBS_INIT)
@@ -45,4 +47,6 @@ if(CMAKE_THREAD_LIBS_INIT)
     target_link_libraries(unique_lock "${CMAKE_THREAD_LIBS_INIT}")
 
     target_link_libraries(condition_variable "${CMAKE_THREAD_LIBS_INIT}")
+    target_link_libraries(condition_variable2 "${CMAKE_THREAD_LIBS_INIT}")
+    target_link_libraries(condition_variable3 "${CMAKE_THREAD_LIBS_INIT}")
 endif()

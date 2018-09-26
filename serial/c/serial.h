@@ -24,7 +24,51 @@ int name_arr[]  = {4000000, 3500000, 3000000, 2500000, 2000000, 1500000, 1000000
                    230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800, 2400,
                    1200, 300,};
 
+typedef struct
+{
+    char *pDevice;
+    int  nSpeed;
+    int  nDatabits;
+    int  nStopbits;
+    char nParity;
+}   SerialOpts;
+
+static int open_serial(SerialOpts *pSerialOpts) __attribute__((__unused__));
+
+static void close_serial(int fd) __attribute__((__unused__));
+
 static int set_speed(int fd, int nSpeed) __attribute__((__unused__));
+
+static int set_Parity(int fd, int nDatabits, int nStopbits, char nParity) __attribute__((__unused__));
+
+static int open_serial(SerialOpts *pSerialOpts)
+{
+    int fd;
+
+    fd = open(pSerialOpts->pDevice, O_RDWR | O_NOCTTY | O_NDELAY);
+    if (fd == -1)
+    {
+        perror("open serial failed");
+        return -1;
+    }
+    if (set_speed(fd, pSerialOpts->nSpeed) < 0)
+    {
+        printf("set_speed failed\n");
+        return -1;
+    }
+    if (set_Parity(fd, pSerialOpts->nDatabits, pSerialOpts->nStopbits, pSerialOpts->nParity) < 0)
+    {
+        printf("set_Parity failed\n");
+        return -1;
+    }
+
+    return fd;
+}
+
+static void close_serial(int fd)
+{
+    close(fd);
+}
 
 static int set_speed(int fd, int nSpeed)
 {
@@ -70,8 +114,6 @@ static int set_speed(int fd, int nSpeed)
     }
     return 0;
 }
-
-static int set_Parity(int fd, int nDatabits, int nStopbits, char nParity) __attribute__((__unused__));
 
 static int set_Parity(int fd, int nDatabits, int nStopbits, char nParity)
 {

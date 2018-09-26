@@ -5,7 +5,7 @@
  * This file is under MIT, see LICENSE for details.
  *
  * Author: Billie Soong <nonkr@hotmail.com>
- * Datetime: 2017/12/28 20:20
+ * Datetime: 2018/09/13 13:57
  *
  */
 
@@ -17,77 +17,43 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <signal.h>
+#include <netinet/in.h>
 #include "../../color.h"
 #include "serial.h"
 
-static const int PacketHeader  = 0xAA;
-static const int MAX_LEN       = 1680;  //缓冲区最大长度
-int              g_nUsartfd    = -1;
+static const int PacketHeader = 0xAA;
+static const int MAX_LEN      = 1680;  //缓冲区最大长度
+int              g_nUsartfd   = -1;
 
-struct
+typedef struct __attribute__((__packed__))
 {
-    char buf[4096];
-}                g_send_data[] = {
-    // 向前
-//    {"AA 03 02 21 00 23"},
-//    {"AA 03 02 21 00 23"},
-//    {"AA 03 02 21 00 23"},
-//    {"AA 03 02 21 00 23"},
-//    {"AA 03 02 21 00 23"},
-//    {"AA 03 02 21 00 23"},
+    unsigned char  ucID;                            // Message ID
+    unsigned short usX;                             // Location's X-axis of Ev, in 15cm resolution
+    unsigned short usY;                             // Location's Y-axis of Ev, in 15cm resolution
+    char           cType;                           // Location's type of Ev
+    unsigned short usDegrees;                       // Location's degrees of Ev
+    unsigned short usDust;                          // Location's dust info of Ev
+    unsigned int   uiLeftOdometer;                  // left odometer
+    unsigned int   uiRightOdometer;                 // right odometer
+    float          fOriginalX;                      // Location's X-axis of Ev, original in 1m
+    float          fOriginalY;                      // Location's Y-axis of Ev, original in 1m
+    unsigned short usToFDistance;                   // distance of single tof(mm)
+}                EvIMUReplyData;
 
-    // 自动清扫
-//    {"AA 03 02 22 02 26"},
-//    {"AA 03 02 22 02 26"},
-//    {"AA 03 02 22 02 26"},
-//    {"AA 03 02 22 02 26"},
-//    {"AA 03 02 22 02 26"},
-//    {"AA 03 02 22 02 26"},
+inline static float FloatSwap(float value)
+{
+    union v
+    {
+        float        f;
+        unsigned int i;
+    };
 
-//    {"AA 01 01 01"},
-//    {"AA 03 02 10 00 12"},
-//    {"AA 03 02 10 01 13"},
-//    {"AA 03 02 21 00 23"},
-//    {"AA 03 02 21 01 24"},
-//    {"AA 03 02 21 02 25"},
-//    {"AA 03 02 21 03 26"},
-//    {"AA 03 02 22 00 24"},
-//    {"AA 03 02 22 01 25"},
-//    {"AA 03 02 22 02 26"},
-//    {"AA 03 02 22 03 27"},
-//    {"AA 03 02 32 01 35"},
-//    {"AA 03 02 32 02 36"},
+    union v val;
 
-    // 海康板主动查询
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 06 06"},
+    val.f = value;
+    val.i = htonl(val.i);
 
-//    {"AA 00 03 02 32 01 35"}, // 语音1
-//    {"AA 00 03 02 32 02 36"}, // 语音2
-
-    {"AA 00 01 90 90"}, // 心跳
-//    {"AA 00 01 81 01 82"}, // IMU
-//    {"AA 00 01 06 06"},
-//    {"AA 00 01 83 83"},
-//    {"AA 00 09 84 00 00 00 00 00 20 00 00 A4"},
-//    {"AA 00 03 02 21 00 23"},
-//    {"AA 00 11 03 01 01 40 00 00 01 00 01 00 01 00 01 00 20 00 00 69"},
+    return val.f;
 };
 
 int hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *p_i_out_len)
@@ -203,47 +169,62 @@ void print_as_hexstring(const char *pData, int iDataLen)
     }
 }
 
+void DecodeIMUData(const char *pData, size_t nSize)
+{
+    if (pData == NULL || nSize <= 0)
+    {
+        return;
+    }
+
+    if (nSize != sizeof(EvIMUReplyData))
+    {
+        return;
+    }
+    else
+    {
+        EvIMUReplyData *pEvIMUReplyData = (EvIMUReplyData *) pData;
+
+        unsigned short usX        = ntohs(pEvIMUReplyData->usX);
+        unsigned short usY        = ntohs(pEvIMUReplyData->usY);
+        unsigned short usDegrees  = ntohs(pEvIMUReplyData->usDegrees);
+        float          fOriginalX = FloatSwap(pEvIMUReplyData->fOriginalX);
+        float          fOriginalY = FloatSwap(pEvIMUReplyData->fOriginalY);
+        printf("IMU:[x:%d y:%d]  [x:%f y:%f]  [%d°]\n", usX, usY, fOriginalX, fOriginalY, usDegrees);
+    }
+}
+
 void *SendThread(void *arg)
 {
     char *pSendData   = NULL;
     int  iSendDataLen = 0;
-    int  i_g_send_data_num;
-    int  i;
+
+    char buff[18] = "AA 00 02 81 00 81";
 
     printf("Start SendThread...\n");
 
     sleep(1);
 
-    i_g_send_data_num = sizeof(g_send_data) / sizeof(g_send_data[0]);
-//    printf("i_g_send_data_num:[%d]\n", i_g_send_data_num);
     while (1)
     {
-        for (i = 0; i < i_g_send_data_num; i++)
+        if (hexstring_to_bytearray(buff, &pSendData, &iSendDataLen))
         {
-            if (hexstring_to_bytearray(g_send_data[i].buf, &pSendData, &iSendDataLen))
-            {
-                perror("HexStringToBytearray failed\n");
-                pthread_exit((void *) 0);
-            }
-
-            OGM_PRINT_GREEN("Send Len:[%d]\n", iSendDataLen);
-            OGM_PRINT_GREEN("Send: [");
-            print_as_hexstring(pSendData, iSendDataLen);
-//            printf("%s", g_send_data[i].buf);
-//            printf("this a hello world text");
-            OGM_PRINT_GREEN("]\n");
-
-            write(g_nUsartfd, pSendData, iSendDataLen);
-
-            if (pSendData)
-            {
-                free(pSendData);
-                pSendData = NULL;
-            }
-
-//            sleep(1);
-            usleep(1000 * 100);
+            perror("HexStringToBytearray failed\n");
+            pthread_exit((void *) 0);
         }
+
+//        OGM_PRINT_GREEN("Send: [");
+//        print_as_hexstring(pSendData, iSendDataLen);
+//        OGM_PRINT_GREEN("]\n");
+
+        write(g_nUsartfd, pSendData, iSendDataLen);
+
+        if (pSendData)
+        {
+            free(pSendData);
+            pSendData = NULL;
+        }
+
+        usleep(1000 * 100);
     }
     pthread_exit((void *) 0);
 }
@@ -272,12 +253,6 @@ void *RecvThread(void *arg)
             }
             else
             {
-//                iReadLen = read(g_nUsartfd, buf, MAX_LEN);
-//                OGM_PRINT_ORANGE("read_len:[%d]\n", iReadLen);
-//                OGM_PRINT_ORANGE("Reply:[");
-//                print_as_hexstring((char *) buf, iReadLen);
-//                OGM_PRINT_ORANGE("]\n\n");
-
                 if (state == 0)
                 {
                     iReadLen = read(g_nUsartfd, buf, 1);
@@ -331,9 +306,21 @@ void *RecvThread(void *arg)
                         last = 0;
 
                         state = 0;
-                        OGM_PRINT_ORANGE("Rply:[");
-                        print_as_hexstring((char *) buf, recv_len);
-                        OGM_PRINT_ORANGE("]\n");
+//                        OGM_PRINT_ORANGE("Rply:[");
+//                        print_as_hexstring((char *) buf, recv_len);
+//                        OGM_PRINT_ORANGE("]\n");
+                        if (recv_len >= 5)
+                        {
+                            char cmd = buf[3];
+                            switch (cmd)
+                            {
+                                case 0x81:
+                                    DecodeIMUData(buf + 4, recv_len - 5);
+                                    break;
+                                default:;
+                            }
+                        }
+
                         recv_len = 0;
                     }
                 }
@@ -352,39 +339,18 @@ void signal_handler(int signum)
 
 int main(int argc, char **argv)
 {
-    int  nSpeed    = 460800;
-    int  nDatabits = 8;
-    int  nStopbits = 1;
-    char nParity   = 'n';
-    char *pDevice  = "/dev/ttyS1";
+    SerialOpts stSerialOpts = {
+        .nSpeed    = 460800,
+        .nDatabits = 8,
+        .nStopbits = 1,
+        .nParity   = 'n',
+        .pDevice   = "/dev/ttyS1"
+    };
 
-    if (argc == 2)
+    if ((g_nUsartfd = open_serial(&stSerialOpts)) < 0)
     {
-        pDevice = argv[1];
-    }
-    else if (argc == 3)
-    {
-        pDevice = argv[1];
-        nSpeed  = strtol(argv[2], NULL, 0);
-    }
-
-    printf("use tty:%s baud:%d\n", pDevice, nSpeed);
-
-    g_nUsartfd = open(pDevice, O_RDWR | O_NOCTTY | O_NDELAY);
-    if (g_nUsartfd == -1)
-    {
-        perror("open serial failed");
-        return -1;
-    }
-    if (set_speed(g_nUsartfd, nSpeed) < 0)
-    {
-        printf("set_speed failed\n");
-        return -1;
-    }
-    if (set_Parity(g_nUsartfd, nDatabits, nStopbits, nParity) < 0)
-    {
-        printf("set_Parity failed\n");
-        return -1;
+        fprintf(stderr, "open serial failed\n");
+        exit(1);
     }
 
     pthread_t TxID;

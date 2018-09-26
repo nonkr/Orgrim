@@ -2,6 +2,9 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/references/fast_ring_queue" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thread/c/other_threadpool/C-Thread-Pool" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thread/c/other_threadpool/threadpool" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/thread/threadpool/c/sample2/C-Thread-Pool" vcs="Git" />
   </component>
 </project>
