@@ -10,3 +10,6 @@
 [submodule "thread/threadpool/c/sample2/C-Thread-Pool"]
 	path = thread/threadpool/c/sample2/C-Thread-Pool
 	url = https://github.com/Pithikos/C-Thread-Pool.git
+[submodule "utils\\config_parser\\ini\\iniparser"]
+	path = utils\\config_parser\\ini\\iniparser
+	url = https://github.com/ndevilla/iniparser.git
