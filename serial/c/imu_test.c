@@ -25,7 +25,7 @@ static const int PacketHeader = 0xAA;
 static const int MAX_LEN      = 1680;  //缓冲区最大长度
 int              g_nUsartfd   = -1;
 
-typedef enum : unsigned char
+typedef enum
 {
     EVMD_IMMOBILE = 0x00,
     EVMD_FORWARD,
@@ -33,23 +33,25 @@ typedef enum : unsigned char
     EVMD_RIGHT,
     EVMD_LEFT,
     EVMD_UNKNOWN
-}                EvMotionDirection;
+} EvMotionDirection;
 
 typedef struct __attribute__((__packed__))
 {
-    unsigned char     ucID;                            // Message ID
-    unsigned short    usX;                             // Location's X-axis of Ev, in 15cm resolution
-    unsigned short    usY;                             // Location's Y-axis of Ev, in 15cm resolution
-    char              cType;                           // Location's type of Ev
-    unsigned short    usDegrees;                       // Location's degrees of Ev
-    unsigned short    usDust;                          // Location's dust info of Ev
+    unsigned char     ucID;                            // message ID
+    unsigned short    usX;                             // location's X-axis of Ev, in 15cm resolution
+    unsigned short    usY;                             // location's Y-axis of Ev, in 15cm resolution
+    char              cType;                           // location's type of Ev
+    unsigned short    usDegrees;                       // location's degrees of Ev
+    unsigned short    usDust;                          // location's dust info of Ev
     unsigned int      uiLeftOdometer;                  // left odometer
     unsigned int      uiRightOdometer;                 // right odometer
-    float             fOriginalX;                      // Location's X-axis of Ev, original in 1m
-    float             fOriginalY;                      // Location's Y-axis of Ev, original in 1m
+    float             fOriginalX;                      // location's X-axis of Ev, original in 1m
+    float             fOriginalY;                      // location's Y-axis of Ev, original in 1m
     unsigned short    usRightToFDistance;              // distance of right single tof(mm)
     unsigned short    usLeftToFDistance;               // distance of left single tof(mm)
-    EvMotionDirection kMotionDirection;                // motion direction
+    EvMotionDirection kMotionDirection : 8;            // motion direction
+    short             sLeftSpeed;                      // speed of left code disc
+    short             sRightSpeed;                     // speed of right code disc
 } EvIMUReplyData;
 
 inline static float FloatSwap(float value)
@@ -323,7 +325,7 @@ void *RecvThread(void *arg)
 //                        OGM_PRINT_ORANGE("]\n");
                         if (recv_len >= 5)
                         {
-                            char cmd = buf[3];
+                            unsigned char cmd = (unsigned char) buf[3];
                             switch (cmd)
                             {
                                 case 0x81:
