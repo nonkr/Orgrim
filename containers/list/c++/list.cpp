@@ -53,6 +53,16 @@ int main()
     }
     cout << "========" << endl;
 
+    string s = lst.front();
+    cout << "first: " << s << endl;
+    cout << "========" << endl;
+
+    lst.pop_front();
+
+    string s2 = lst.front();
+    cout << "first after pop_front: " << s2 << endl;
+    cout << "========" << endl;
+
     // 把list的元素倒转
     lst.reverse();
 
