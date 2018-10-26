@@ -19,7 +19,7 @@
 #include "../../color.h"
 #include "serial.h"
 
-static const int PacketHeader = 0xAA;
+static const int G_MAGIC_NUMBER = 0xAA;
 static const int MAX_LEN      = 1024;
 
 void print_as_hexstring(const char *pData, int iDataLen)
@@ -102,7 +102,7 @@ void RecvThread(int fd)
                 if (state == 0)
                 {
                     iReadLen = read(fd, buf, 1);
-                    if (iReadLen == 1 && (*(buf) & 0xFF) == PacketHeader)
+                    if (iReadLen == 1 && (*(buf) & 0xFF) == G_MAGIC_NUMBER)
                     {
                         state = 1;
                         recv_len += iReadLen;

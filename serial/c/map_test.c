@@ -23,7 +23,7 @@
 #include "serial.h"
 
 #define UART_BUFF_MEX_LEN 1680
-static const int PacketHeader = 0xAA;
+static const int G_MAGIC_NUMBER = 0xAA;
 static const int MAX_LEN      = UART_BUFF_MEX_LEN;  //缓冲区最大长度
 
 int g_nUsartfd;
@@ -541,7 +541,7 @@ void *RecvThread(void *arg)
                 if (state == 0)
                 {
                     iReadLen = read(g_nUsartfd, g_ReadBuff, 1);
-                    if (iReadLen == 1 && (*(g_ReadBuff) & 0xFF) == PacketHeader)
+                    if (iReadLen == 1 && (*(g_ReadBuff) & 0xFF) == G_MAGIC_NUMBER)
                     {
                         state = 1;
                         recv_len += iReadLen;

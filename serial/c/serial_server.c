@@ -23,7 +23,7 @@
 
 #define MAX_SENDBUFF_LEN (1025 * 16)
 #define MAX_SOCKET_READ_LEN (MAX_SENDBUFF_LEN * 3)
-static const int PacketHeader  = 0xAA;
+static const int G_MAGIC_NUMBER  = 0xAA;
 static const int MAX_LEN       = MAX_SENDBUFF_LEN;  //缓冲区最大长度
 
 int server_fd;
@@ -237,7 +237,7 @@ void *RecvThread(void *arg)
                 if (state == 0)
                 {
                     iReadLen = read(g_nUsartfd, buf, 1);
-                    if (iReadLen == 1 && (*(buf) & 0xFF) == PacketHeader)
+                    if (iReadLen == 1 && (*(buf) & 0xFF) == G_MAGIC_NUMBER)
                     {
                         state = 1;
                         recv_len += iReadLen;
