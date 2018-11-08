@@ -17,6 +17,9 @@
 #define TOCK(S, E, LABEL) clock_t E = clock(); \
                           printf("Time duration of %s: %g sec.\n", LABEL, (double)((E) - (S)) / CLOCKS_PER_SEC);
 
+//
+// XXX: Is't not safe to use this TICK and TOCK between such as sleep() function, please use C++ instead of.
+//
 int main()
 {
     TICK(a);
