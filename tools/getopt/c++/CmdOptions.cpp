@@ -9,19 +9,7 @@
 #include <cstring>
 #include "CmdOptions.h"
 
-AppOptions_t G_AppOptions = {
-    .nBackground = 0,
-    .nVerbose = 0,
-    .nArgOnlyLongOption1 = 0,
-    .nArgOnlyLongOption2 = 0,
-    .nArgOnlyShortOption = 0,
-    .nArgLongAndShortOption = 0,
-    .nArgWithParameter = 0,
-    .pStringArg = nullptr,
-    .bBoolean1 = false,
-    .bBoolean2 = false,
-    .bBoolean3 = false,
-};
+AppOptions_t G_AppOptions;
 
 void Usage(const char *pProg)
 {
