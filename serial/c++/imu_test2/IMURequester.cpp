@@ -245,33 +245,33 @@ void IMURequester::DecodeIMUData(const char *pData, size_t nSize, IMU_t *pIMU)
             if (ms * 1000 < IMU_TIMEDOUT4)
             {
                 m_TotalRecvShortCount1++;
-                FR_PRINT_CYAN("duration: %f sec, id: %d\n", ms, pIMU->id);
+//                FR_PRINT_CYAN("duration: %f sec, id: %d\n", ms, pIMU->id);
             }
 
             if (ms * 1000 > IMU_TIMEDOUT3)
             {
                 m_TotalRecvLongCount3++;
-                FR_PRINT_BLUE("duration: %f sec, id: %d\n", ms, pIMU->id);
+//                FR_PRINT_BLUE("duration: %f sec, id: %d\n", ms, pIMU->id);
             }
             else if (ms * 1000 > IMU_TIMEDOUT2)
             {
                 m_TotalRecvLongCount2++;
-                FR_PRINT_BLUE("duration: %f sec, id: %d\n", ms, pIMU->id);
+//                FR_PRINT_BLUE("duration: %f sec, id: %d\n", ms, pIMU->id);
             }
             else if (ms * 1000 > IMU_TIMEDOUT1)
             {
                 m_TotalRecvLongCount1++;
-                FR_PRINT_BLUE("duration: %f sec, id: %d\n", ms, pIMU->id);
+//                FR_PRINT_BLUE("duration: %f sec, id: %d\n", ms, pIMU->id);
             }
 
-//            printf(
-//                "RecvTotal: %" PRIu64", timedout in %dms:%" PRIu64" (%.2f%%), timedout in %dms: %" PRIu64"(%.2f%%), timedout in %dms: %" PRIu64"(%.2f%%), time less %dms: %" PRIu64"(%.2f%%), lost:%" PRIu64"\r",
-//                m_TotalRecvCount,
-//                IMU_TIMEDOUT1, m_TotalRecvLongCount1, (double) m_TotalRecvLongCount1 / m_TotalRecvCount * 100,
-//                IMU_TIMEDOUT2, m_TotalRecvLongCount2, (double) m_TotalRecvLongCount2 / m_TotalRecvCount * 100,
-//                IMU_TIMEDOUT3, m_TotalRecvLongCount3, (double) m_TotalRecvLongCount3 / m_TotalRecvCount * 100,
-//                IMU_TIMEDOUT4, m_TotalRecvShortCount1, (double) m_TotalRecvShortCount1 / m_TotalRecvCount * 100,
-//                m_TotalLost);
+            printf(
+                "RecvTotal: %" PRIu64", timedout in %dms:%" PRIu64" (%.2f%%), timedout in %dms: %" PRIu64"(%.2f%%), timedout in %dms: %" PRIu64"(%.2f%%), time less %dms: %" PRIu64"(%.2f%%), lost:%" PRIu64"\r",
+                m_TotalRecvCount,
+                IMU_TIMEDOUT1, m_TotalRecvLongCount1, (double) m_TotalRecvLongCount1 / m_TotalRecvCount * 100,
+                IMU_TIMEDOUT2, m_TotalRecvLongCount2, (double) m_TotalRecvLongCount2 / m_TotalRecvCount * 100,
+                IMU_TIMEDOUT3, m_TotalRecvLongCount3, (double) m_TotalRecvLongCount3 / m_TotalRecvCount * 100,
+                IMU_TIMEDOUT4, m_TotalRecvShortCount1, (double) m_TotalRecvShortCount1 / m_TotalRecvCount * 100,
+                m_TotalLost);
             fflush(stdout);
 
             m_PreIMUID = pIMU->id;
