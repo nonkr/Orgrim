@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <chrono>
 
-#define IMU_TIMEDOUT1 50
+#define IMU_TIMEDOUT1 30
 #define IMU_TIMEDOUT2 100
 #define IMU_TIMEDOUT3 400
 #define IMU_TIMEDOUT4 10
