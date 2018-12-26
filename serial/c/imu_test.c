@@ -33,7 +33,7 @@ typedef enum
     EVMD_RIGHT,
     EVMD_LEFT,
     EVMD_UNKNOWN
-} EvMotionDirection;
+}                EvMotionDirection;
 
 typedef struct __attribute__((__packed__))
 {
@@ -50,8 +50,9 @@ typedef struct __attribute__((__packed__))
     unsigned short    usRightToFDistance;              // distance of right single tof(mm)
     unsigned short    usLeftToFDistance;               // distance of left single tof(mm)
     EvMotionDirection kMotionDirection : 8;            // motion direction
-    short             sLeftSpeed;                      // speed of left code disc
-    short             sRightSpeed;                     // speed of right code disc
+//    short             sLeftSpeed;                      // speed of left code disc
+//    short             sRightSpeed;                     // speed of right code disc
+    unsigned short    usBatteryVoltage;                // battery voltage
 } EvIMUReplyData;
 
 inline static float FloatSwap(float value)
@@ -198,12 +199,14 @@ void DecodeIMUData(const char *pData, size_t nSize)
     {
         EvIMUReplyData *pEvIMUReplyData = (EvIMUReplyData *) pData;
 
-        unsigned short usX        = ntohs(pEvIMUReplyData->usX);
-        unsigned short usY        = ntohs(pEvIMUReplyData->usY);
-        unsigned short usDegrees  = ntohs(pEvIMUReplyData->usDegrees);
-        float          fOriginalX = FloatSwap(pEvIMUReplyData->fOriginalX);
-        float          fOriginalY = FloatSwap(pEvIMUReplyData->fOriginalY);
-        printf("IMU:[x:%d y:%d]  [x:%f y:%f]  [%d°]\n", usX, usY, fOriginalX, fOriginalY, usDegrees);
+//        unsigned short usX                = ntohs(pEvIMUReplyData->usX);
+//        unsigned short usY                = ntohs(pEvIMUReplyData->usY);
+        unsigned short usDegrees          = ntohs(pEvIMUReplyData->usDegrees);
+        float          fOriginalX         = FloatSwap(pEvIMUReplyData->fOriginalX);
+        float          fOriginalY         = FloatSwap(pEvIMUReplyData->fOriginalY);
+        unsigned short usRightToFDistance = ntohs(pEvIMUReplyData->usRightToFDistance);
+        unsigned short usLeftToFDistance  = ntohs(pEvIMUReplyData->usLeftToFDistance);
+        printf("%f,%f,%d,%u,%u\n", fOriginalX, fOriginalY, usDegrees, usLeftToFDistance, usRightToFDistance);
     }
 }
 
@@ -367,7 +370,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    pthread_t TxID;
+//    pthread_t TxID;
     pthread_t RxID;
     int       iRet;
 
@@ -378,16 +381,16 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    iRet = pthread_create(&TxID, NULL, SendThread, NULL);
-    if (iRet)
-    {
-        printf("pthread_create SendThread failed\n");
-        exit(-1);
-    }
+//    iRet = pthread_create(&TxID, NULL, SendThread, NULL);
+//    if (iRet)
+//    {
+//        printf("pthread_create SendThread failed\n");
+//        exit(-1);
+//    }
 
     signal(SIGINT, signal_handler);
 
-    pthread_join(TxID, NULL);
+//    pthread_join(TxID, NULL);
     pthread_join(RxID, NULL);
 
     return 0;
