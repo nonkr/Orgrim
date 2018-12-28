@@ -13,8 +13,10 @@
 #include <csignal>
 #include <unistd.h>
 #include "IMURequester.h"
+#include "SPToF.h"
 
 IMURequester *pIMURequester;
+SPToF        *pSPToF;
 bool         G_RUNNING = true;
 
 void SignalHandler(int signum)
@@ -27,18 +29,25 @@ int main()
 {
     signal(SIGINT, SignalHandler);
 
-    IMU_t         stIMU = {0};
-    unsigned char index = 0;
+    IMU_t stIMU        = {0};
+    short sMiddleSPToF = 8888;
 
     pIMURequester = new IMURequester();
 
-    printf("\x1B[?25l");
+    pSPToF = new SPToF;
+    if (pSPToF->Init(0, 0))
+    {
+        return 1;
+    }
+
     while (G_RUNNING)
     {
-        pIMURequester->GetIMU(&stIMU, index++);
-        usleep(50000);
+        pIMURequester->GetIMU(&stIMU);
+        sMiddleSPToF = pSPToF->GetSPToFDistance();
+        printf("%f,%f,%d,%d,%d,%d\n", stIMU.x, stIMU.y, stIMU.degree, sMiddleSPToF, stIMU.leftSingleToF, stIMU.rightSingleToF);
     }
 
     delete pIMURequester;
-    printf("\x1B[?25h\n");
+    pSPToF->DeInit();
+    delete pSPToF;
 }

@@ -33,14 +33,15 @@ struct EvIMUReplyData_t
     unsigned short usRightToFDistance;              // distance of right single tof(mm)
     unsigned short usLeftToFDistance;               // distance of left single tof(mm)
     unsigned char  kMotionDirection;                // motion direction
+//    short             sLeftSpeed;                      // speed of left code disc
+//    short             sRightSpeed;                     // speed of right code disc
+    unsigned short    usBatteryVoltage;             // battery voltage
 }  __attribute__((__packed__));
 
-IMURequester::IMURequester()
+IMURequester::IMURequester() : m_ThreadIsRunning(2)
 {
     m_bReceivedIMUData   = false;
     m_nUsartfd           = -1;
-    m_TotalRequestCount  = 0;
-    m_TotalTimedoutCount = 0;
 
     SerialOpts stSerialOpts = {
         .pDevice   = (char *) "/dev/ttyS1",
@@ -56,23 +57,18 @@ IMURequester::IMURequester()
         return;
     }
 
-    pthread_mutex_init(&m_ReceivedMutex, NULL);
-    pthread_cond_init(&m_ReceivedCond, NULL);
-    pthread_barrier_init(&m_ThreadIsRunning, NULL, 2);
-
-    if (pthread_create(&m_RxID, NULL, RecvThread, this))
+    if (pthread_create(&m_RxID, nullptr, RecvThread, this))
     {
         printf("pthread_create RecvThread failed\n");
         return;
     }
 
-    pthread_barrier_wait(&m_ThreadIsRunning);
+    m_ThreadIsRunning.wait();
 }
 
 IMURequester::~IMURequester()
 {
     pthread_join(m_RxID, nullptr);
-    pthread_barrier_destroy(&m_ThreadIsRunning);
 }
 
 inline static float FloatSwap(float value)
@@ -95,11 +91,11 @@ int IMURequester::hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *
 {
     size_t i;
     size_t i_str_len;
-    char   *p_out    = NULL;
+    char   *p_out    = nullptr;
     int    i_out_len = 0;
     int    i_offset  = 0;
 
-    if (p_hexstring == NULL)
+    if (p_hexstring == nullptr)
         return -1;
 
     i_str_len = strlen(p_hexstring);
@@ -116,7 +112,7 @@ int IMURequester::hexstring_to_bytearray(char *p_hexstring, char **pp_out, int *
     }
 
     p_out = (char *) malloc((size_t) i_out_len);
-    if (p_out == NULL)
+    if (p_out == nullptr)
         return -1;
 
     for (i = 0; i < i_str_len;)
@@ -153,9 +149,9 @@ error:
 
 void IMURequester::DecodeIMUData(const char *pData, size_t nSize, IMU_t *pIMU)
 {
-    if (pData == NULL || nSize <= 0)
+    if (pData == nullptr || nSize <= 0)
     {
-        printf("%s:null\n", __func__);
+        printf("%s:nullptr\n", __func__);
         return;
     }
 
@@ -184,35 +180,6 @@ void IMURequester::DecodeIMUData(const char *pData, size_t nSize, IMU_t *pIMU)
     }
 }
 
-int IMURequester::Send(int fd, unsigned char id)
-{
-    char *pSendData   = NULL;
-    int  iSendDataLen = 0;
-    int  ret;
-    char buff[18]     = "AA 00 02 81 00 81";
-
-    if (hexstring_to_bytearray(buff, &pSendData, &iSendDataLen))
-    {
-        perror("HexStringToBytearray failed\n");
-        return -1;
-    }
-    pSendData[4] = id;
-    pSendData[5] = pSendData[4] + pSendData[3];
-    ret = write(fd, pSendData, iSendDataLen);
-
-//    DebugUtil::PrintAsHexString("Send", (unsigned char *) pSendData, iSendDataLen);
-
-    if (pSendData)
-    {
-        free(pSendData);
-        pSendData = NULL;
-    }
-    if (ret < 0)
-        return -1;
-    else
-        return 0;
-}
-
 void IMURequester::RecvRoutine()
 {
     int    iReadLen;
@@ -222,17 +189,16 @@ void IMURequester::RecvRoutine()
     int    recv_len = 0;
     int    len_temp = 0;
 
-    printf("Start RecvThread...\n");
-    pthread_barrier_wait(&m_ThreadIsRunning);
+    m_ThreadIsRunning.wait();
 
-    while (1)
+    while (true)
     {
         FD_ZERO(&rd);
         FD_SET(m_nUsartfd, &rd);
         memset(buf, 0, sizeof(buf));
         while (FD_ISSET(m_nUsartfd, &rd))
         {
-            if (select(m_nUsartfd + 1, &rd, NULL, NULL, NULL) < 0)
+            if (select(m_nUsartfd + 1, &rd, nullptr, nullptr, nullptr) < 0)
             {
                 perror("select error\n");
             }
@@ -302,12 +268,12 @@ void IMURequester::RecvRoutine()
 
 //                                    DebugUtil::PrintAsHexString("Recv", (unsigned char *) buf, recv_len);
 
-                                    pthread_mutex_lock(&m_ReceivedMutex);
+                                    m_ReceivedCond.lock();
                                     DecodeIMUData(buf + 4, recv_len - 5, &imu);
                                     memcpy(&m_stIMUTempBuffer, &imu, sizeof(imu));
                                     m_bReceivedIMUData = true;
-                                    pthread_cond_signal(&m_ReceivedCond);
-                                    pthread_mutex_unlock(&m_ReceivedMutex);
+                                    m_ReceivedCond.signal();
+                                    m_ReceivedCond.unlock();
                                     break;
                                 }
                                 default:;
@@ -333,59 +299,18 @@ void *IMURequester::RecvThread(void *arg)
     pthread_exit(nullptr);
 }
 
-int IMURequester::GetIMU(IMU_t *pIMU, unsigned char index)
+int IMURequester::GetIMU(IMU_t *pIMU)
 {
-    if (Send(m_nUsartfd, index) < 0)
-    {
-        printf("Send failed\n");
-        return -1;
-    }
-
-    m_TotalRequestCount++;
-    printf("SendTotal: %llu, timedout in %dms: %llu (%.2f%%)\r", m_TotalRequestCount, IMU_TIMEDOUT1,
-           m_TotalTimedoutCount, (double) m_TotalTimedoutCount / m_TotalRequestCount * 100);
-    fflush(stdout);
-
-WAIT_FOR_NEXT:
-    pthread_mutex_lock(&m_ReceivedMutex);
+    m_ReceivedCond.lock();
     while (!m_bReceivedIMUData)
     {
-        static struct timespec timeout;
-        memset(&timeout, 0x00, sizeof(timeout));
-        clock_gettime(CLOCK_REALTIME, &timeout);
-        timeout.tv_nsec += IMU_TIMEDOUT1 * 1000000;
-//        TICK(b);
-        if (pthread_cond_timedwait(&m_ReceivedCond, &m_ReceivedMutex, &timeout) == ETIMEDOUT)
-        {
-            m_TotalTimedoutCount++;
-//            TOCK(b, "get imu timedout");
-//            printf("Timedout in %dms: %.2f%% (%llu/%llu)\n", IMU_TIMEDOUT1,
-//                   (double) m_TotalTimedoutCount / m_TotalRequestCount * 100, m_TotalTimedoutCount,
-//                   m_TotalRequestCount);
-            pthread_mutex_unlock(&m_ReceivedMutex);
-            return -1;
-        }
+        m_ReceivedCond.wait();
     }
-
-//    TOCK(a, "received imu");
 
     m_bReceivedIMUData = false;
 
-    if (m_stIMUTempBuffer.id + 1 == index || (m_stIMUTempBuffer.id == 255 && index == 0))
-    {
-        pthread_mutex_unlock(&m_ReceivedMutex);
-        goto WAIT_FOR_NEXT;
-    }
-
-    if (index != m_stIMUTempBuffer.id)
-    {
-        FR_PRINT_RED("receive wrong imu id: %d, should be %d\n", m_stIMUTempBuffer.id, index);
-        pthread_mutex_unlock(&m_ReceivedMutex);
-        return -1;
-    }
     memcpy(pIMU, &m_stIMUTempBuffer, sizeof(IMU_t));
-    pIMU->id = index;
-    pthread_mutex_unlock(&m_ReceivedMutex);
+    m_ReceivedCond.unlock();
 
     return 0;
 }
