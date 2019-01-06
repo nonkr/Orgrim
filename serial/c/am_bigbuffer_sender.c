@@ -21,8 +21,8 @@
 #include "serial.h"
 
 #define UART_BUFF_MEX_LEN 1680
-static const int G_MAGIC_NUMBER      = 0xAA;
-static const int MAX_LEN           = UART_BUFF_MEX_LEN;  //缓冲区最大长度
+static const int G_MAGIC_NUMBER    = 0xAA;
+//static const int MAX_LEN           = UART_BUFF_MEX_LEN;  //缓冲区最大长度
 
 int g_nUsartfd;
 

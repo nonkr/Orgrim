@@ -20,8 +20,8 @@
 #include "../../color.h"
 #include "serial.h"
 
-static const int G_MAGIC_NUMBER  = 0xAA;
-static const int MAX_LEN       = 1680;  //缓冲区最大长度
+//static const int G_MAGIC_NUMBER  = 0xAA;
+//static const int MAX_LEN       = 1680;  //缓冲区最大长度
 int              g_nUsartfd    = -1;
 static int       G_OPEN_DEBUG  = 1;
 
