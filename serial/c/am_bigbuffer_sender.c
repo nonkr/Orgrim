@@ -349,7 +349,7 @@ void *RecvThread(void *arg)
         FD_ZERO(&rd);
         FD_SET(g_nUsartfd, &rd);
         memset(g_ReadBuff, 0, sizeof(g_ReadBuff));
-        while (FD_ISSET(g_nUsartfd, &rd))
+        if (FD_ISSET(g_nUsartfd, &rd))
         {
             if (select(g_nUsartfd + 1, &rd, NULL, NULL, NULL) < 0)
             {
