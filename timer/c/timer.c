@@ -9,6 +9,7 @@
  *
  */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
@@ -25,6 +26,7 @@ void signalHandler(int signum)
     printf("Interrupt signal (%d) received.\n", signum);
     printf("to cancel the timer\n");
     setitimer(ITIMER_REAL, 0, NULL);
+    exit(0);
 }
 
 int main()
