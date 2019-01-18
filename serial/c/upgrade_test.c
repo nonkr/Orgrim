@@ -22,14 +22,14 @@
 
 #define UART_BUFF_MEX_LEN 1680
 static const int G_MAGIC_NUMBER = 0xAA;
-static const int MAX_LEN      = UART_BUFF_MEX_LEN;  //缓冲区最大长度
+//static const int MAX_LEN      = UART_BUFF_MEX_LEN;  //缓冲区最大长度
 
 int g_nUsartfd;
 
 pthread_mutex_t g_ReadMutex;
 pthread_cond_t  g_ReadCond;
 static char     g_ReadBuff[UART_BUFF_MEX_LEN];
-static int      g_ReadBuffLen = 0;
+static int      g_ReadBuffLen   = 0;
 
 static unsigned long long g_ullTotalRecvCount    = 0ULL;
 static unsigned long long g_ullTotalErrRecvCount = 0ULL;
@@ -183,7 +183,7 @@ void ReadDataFromUart()
 
     if (g_ReadBuffLen >= 6)
     {
-        if (g_ReadBuff[3] == 0x85)
+        if (g_ReadBuff[3] == (char) 0x85)
         {
             g_ullTotalRecvCount++;
             if (isChecksumError(g_ReadBuff, g_ReadBuffLen) ||
@@ -261,7 +261,7 @@ void *RecvThread(void *arg)
         FD_ZERO(&rd);
         FD_SET(g_nUsartfd, &rd);
         memset(g_ReadBuff, 0, sizeof(g_ReadBuff));
-        while (FD_ISSET(g_nUsartfd, &rd))
+        if (FD_ISSET(g_nUsartfd, &rd))
         {
             if (select(g_nUsartfd + 1, &rd, NULL, NULL, NULL) < 0)
             {

@@ -166,11 +166,11 @@ void RecvThread(int fd)
 int main(int argc, char **argv)
 {
     SerialOpts stSerialOpts = {
-        nSpeed: 460800,
-        nDatabits: 8,
-        nStopbits: 1,
-        nParity: 'n',
-        pDevice: "/dev/ttyS1"
+        .pDevice   = (char *) "/dev/ttyS1",
+        .nSpeed    = 460800,
+        .nDatabits = 8,
+        .nStopbits = 1,
+        .nParity   = 'n',
     };
 
     int fd;
