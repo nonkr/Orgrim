@@ -22,14 +22,14 @@
 #include "../../color.h"
 #include "serial.h"
 
-#define UART_BUFF_MEX_LEN 1680
+#define UART_BUFF_MEX_LEN 512
 static const int G_MAGIC_NUMBER = 0xAA;
 //static const int MAX_LEN      = UART_BUFF_MEX_LEN;  //缓冲区最大长度
 
 int g_nUsartfd;
 
 #define MAP_PIXELS 128
-#define MAPDATA_FRAME_MAX_BYTES 100
+#define MAPDATA_FRAME_MAX_BYTES 200
 #define UART_MAGIC_SIZE 1
 #define UART_LENGTH_SIZE 2
 #define UART_CMD_SIZE 1
@@ -39,7 +39,8 @@ int g_nUsartfd;
 #define CRC_TABLE_SIZE 256
 #define CRC_GEN_POLY   0x8005
 
-static unsigned char g_Mapdata[MAP_PIXELS][MAP_PIXELS];
+static unsigned char g_Mapdata[MAP_PIXELS * MAP_PIXELS / 2];
+static unsigned int  g_uiMapDataSendOffset;
 
 pthread_mutex_t g_ReadMutex;
 pthread_cond_t  g_ReadCond;
@@ -52,6 +53,13 @@ static unsigned long long g_ullTotalErrRecvCount = 0ULL;
 static int           g_uiTotalMapDataLeft;
 static unsigned char g_ucFrameNo                 = 1;
 static int           g_iReplyErrorCount          = 0;
+
+typedef enum
+{
+    RECV_EOK,
+    RECV_EGENERIC,
+    RECV_ETIMEDOUT,
+}                    recv_err_t;
 
 static unsigned int m_CRCTable[CRC_TABLE_SIZE] = {};
 
@@ -190,9 +198,9 @@ int isChecksumError(const char *pData, const int iDataLen)
     return cChecksum == (pData[iDataLen - 1] & 0xFF) ? 0 : 1;
 }
 
-int ReadDataFromUart()
+recv_err_t ReadDataFromUart()
 {
-    int             iRet = 0;
+    int             iRet = RECV_EOK;
     struct timespec stCondTimeout;
 
     clock_gettime(CLOCK_REALTIME, &stCondTimeout);
@@ -206,17 +214,14 @@ int ReadDataFromUart()
             OGM_PRINT_YELLOW("recv wait timed out\n");
             g_ReadBuffLen = 0;
             pthread_mutex_unlock(&g_ReadMutex);
-            return 3;
+            return RECV_ETIMEDOUT;
         }
     }
 
     if (g_ReadBuffLen >= 6 && g_ReadBuff[3] == 0x03)
     {
-        if (g_ReadBuff[4] == 0x06)
-        {
-            iRet = 2;
-        }
-        else if (g_ReadBuff[4] == 0x05)
+        OGM_PRINT_BLUE("Recv subcmd:[0x%02X]\n", g_ReadBuff[4]);
+        if (g_ReadBuff[4] == 0x05) // A.7.4 地图下发
         {
             g_ullTotalRecvCount++;
             if (isChecksumError(g_ReadBuff, g_ReadBuffLen))
@@ -229,17 +234,12 @@ int ReadDataFromUart()
                 {
                     g_ullTotalErrRecvCount++;
 
-                    if (g_ucFrameNo > 1)
-                    {
-                        g_ucFrameNo--;
-                        g_uiTotalMapDataLeft += MAPDATA_FRAME_MAX_BYTES * 4;
-                    }
                     g_iReplyErrorCount++;
                     OGM_PRINT_RED("Reply error, count:[%d]\n", g_iReplyErrorCount);
                     if (g_iReplyErrorCount > 3)
                     {
                         OGM_PRINT_RED("Reply error exceed the limit\n");
-                        iRet = 1;
+                        iRet = RECV_EGENERIC;
                     }
                 }
             }
@@ -250,57 +250,6 @@ int ReadDataFromUart()
     pthread_mutex_unlock(&g_ReadMutex);
 
     return iRet;
-}
-
-int ReadMapDataFromFile(const char *pFileName)
-{
-    FILE *fp       = NULL;
-    int  c;
-    int  row_count = 0;
-    int  col_count = 0;
-    int  k;
-
-    if ((fp = fopen(pFileName, "r")) == NULL)
-    {
-        fprintf(stderr, "open %s failed\n", pFileName);
-        return 1;
-    }
-
-    while (!feof(fp))
-    {
-        c = fgetc(fp);
-        if (c == '\n')
-        {
-            for (k = col_count; k < MAP_PIXELS; k++)
-            {
-                g_Mapdata[row_count][k] = ' ';
-            }
-
-            if (row_count >= MAP_PIXELS)
-            {
-                fprintf(stderr, "malformed size chart of row %d, col %d\n", row_count, col_count);
-                goto error;
-            }
-            row_count++;
-            col_count = 0;
-        }
-        else
-        {
-            g_Mapdata[row_count][col_count] = (unsigned char) c;
-            if (col_count >= MAP_PIXELS)
-            {
-                fprintf(stderr, "malformed size chart of col %d, row %d\n", col_count, row_count);
-                goto error;
-            }
-            col_count++;
-        }
-    }
-
-    fclose(fp);
-    return 0;
-error:
-    fclose(fp);
-    return 2;
 }
 
 unsigned int BlockCRC16TableFor8813(unsigned char *Block, unsigned int Len,
@@ -349,46 +298,6 @@ void BuildCRC16TableFor8813(unsigned int genPoly)
     }
 }
 
-void EncodeUartMapData(unsigned char *pBuff, int iStartX, int iStartY, const int iTotalDataCount)
-{
-    int           i, j;
-    int           n          = 0;
-    int           iBitOffset = 3;
-    int           iDataCount = 1;
-    unsigned char ucData;
-    for (i = iStartX - 1; i < MAP_PIXELS; i++)
-    {
-        for (j = iStartY - 1; j < MAP_PIXELS; j++)
-        {
-            if (iBitOffset < 0)
-            {
-                n++;
-                iBitOffset = 3;
-            }
-            switch (g_Mapdata[i][j])
-            {
-                case ' ':
-                    ucData = 0x03;
-                    break;
-                default:
-                    ucData = 0x02;
-            }
-//            printf("count:%d x%d,y%d type:0x%02X\n", iDataCount, i + 1, j + 1, ucData);
-//            printf("%c", g_Mapdata[i][j]);
-
-            pBuff[n] |= ucData << (iBitOffset-- * 2);
-            if (++iDataCount > iTotalDataCount)
-            {
-                goto end;
-            }
-        }
-        iStartY = 1;
-//        printf("\n");
-    }
-
-end:;
-}
-
 unsigned char CalcChecksum(const unsigned char *pBuff, const int iBuffLen)
 {
     int           i;
@@ -406,104 +315,85 @@ void *SendThread(void *arg)
 
     sleep(1);
 
-    unsigned char  ucFrameTotal   = (unsigned char) ceil(
-        MAP_PIXELS * 1.0 * MAP_PIXELS / 4 / MAPDATA_FRAME_MAX_BYTES);
-    unsigned char  *pBuff         = NULL;
-    int            iBuffLen;
-    unsigned int   uiTotalMapData = MAP_PIXELS * MAP_PIXELS;
-    unsigned short usStartX;
-    unsigned short usStartY;
-    int            iFrameDataPointCount; // 当前帧总共有多少个地图点
-    int            iFrameDataBytesLen; // 当前帧的地图点数据总共占用了多少个字节
-    unsigned int   uiCRC;
+    unsigned char ucFrameTotal   = (unsigned char) ceil(
+        MAP_PIXELS * 1.0 * MAP_PIXELS / 2 / MAPDATA_FRAME_MAX_BYTES);
+    unsigned char *pBuff         = NULL;
+    int           iBuffLen;
+    unsigned int  uiTotalMapData = MAP_PIXELS * MAP_PIXELS / 2;
+    int           iFrameDataBytesLen;   // 当前帧的地图数据长度
+    unsigned int  uiCRC;
 
     BuildCRC16TableFor8813(CRC_GEN_POLY);
 
-//    while (ReadDataFromUart() != 2)
-//    {
-//    }
+    g_ucFrameNo           = 1;
+    g_uiTotalMapDataLeft  = uiTotalMapData;
+    g_uiMapDataSendOffset = 0;
 
-    while (1)
+    do
     {
-        g_ucFrameNo          = 1;
-        g_uiTotalMapDataLeft = uiTotalMapData;
-        do
+        // 当前帧的地图数据长度
+        iFrameDataBytesLen = (g_uiTotalMapDataLeft >= MAPDATA_FRAME_MAX_BYTES ?
+                              MAPDATA_FRAME_MAX_BYTES : g_uiTotalMapDataLeft);
+
+        // 总的包长
+        iBuffLen = UART_MAGIC_SIZE + UART_LENGTH_SIZE + UART_CMD_SIZE + UART_SUBCMD_SIZE +
+                   1 + 1 + 1 + iFrameDataBytesLen + 2 + UART_CHECKSUM_SIZE;
+
+        if ((pBuff = malloc(sizeof(unsigned char) * iBuffLen)) == NULL)
         {
-            iFrameDataBytesLen =
-                (g_uiTotalMapDataLeft > MAPDATA_FRAME_MAX_BYTES * 4 ? MAPDATA_FRAME_MAX_BYTES : (int) ceil(
-                    g_uiTotalMapDataLeft * 1.0 / 4)) + 1 + 1 + 2 + 2 + 2 + 2;
-            iFrameDataPointCount = (g_uiTotalMapDataLeft > MAPDATA_FRAME_MAX_BYTES * 4 ? MAPDATA_FRAME_MAX_BYTES * 4
-                                                                                       : g_uiTotalMapDataLeft);
-            iBuffLen             = UART_MAGIC_SIZE + UART_LENGTH_SIZE + UART_CMD_SIZE + UART_SUBCMD_SIZE +
-                                   iFrameDataBytesLen + UART_CHECKSUM_SIZE;
+            OGM_PRINT_RED("malloc error\n");
+            pthread_exit((void *) 1);
+        }
+        memset(pBuff, 0x00, sizeof(unsigned char) * iBuffLen);
 
-            if ((pBuff = malloc(sizeof(unsigned char) * iBuffLen)) == NULL)
-            {
-                OGM_PRINT_RED("malloc error\n");
-                pthread_exit((void *) 1);
-            }
-            memset(pBuff, 0x00, sizeof(unsigned char) * iBuffLen);
+        pBuff[0] = (unsigned char) G_MAGIC_NUMBER;
+        pBuff[1] = (unsigned char) ((iBuffLen - UART_MAGIC_SIZE - UART_LENGTH_SIZE - UART_CHECKSUM_SIZE) >> 8);
+        pBuff[2] = (unsigned char) ((iBuffLen - UART_MAGIC_SIZE - UART_LENGTH_SIZE - UART_CHECKSUM_SIZE) & 0xFF);
+        pBuff[3] = (unsigned char) 0x03;
+        pBuff[4] = (unsigned char) 0x05;
+        pBuff[5] = ucFrameTotal; // 共有多少帧
+        pBuff[6] = g_ucFrameNo;  // 当前帧号（从1开始计数）
+        pBuff[7] = (unsigned char) (iFrameDataBytesLen & 0xFf);
+        memcpy(pBuff + 8, g_Mapdata + g_uiMapDataSendOffset, (size_t) iFrameDataBytesLen);
+        uiCRC = GenCRC(pBuff + UART_MAGIC_SIZE + UART_LENGTH_SIZE + UART_CMD_SIZE + UART_SUBCMD_SIZE,
+                       (unsigned int) 1 + 1 + 1 + iFrameDataBytesLen);
+        pBuff[iBuffLen - 3] = (unsigned char) (uiCRC >> 8);
+        pBuff[iBuffLen - 2] = (unsigned char) (uiCRC & 0xFf);
+        pBuff[iBuffLen - 1] = CalcChecksum(pBuff + UART_MAGIC_SIZE + UART_LENGTH_SIZE,
+                                           iBuffLen - UART_CMD_SIZE - UART_SUBCMD_SIZE - UART_CHECKSUM_SIZE);
 
-            usStartX = (unsigned short) (((g_ucFrameNo - 1) * MAPDATA_FRAME_MAX_BYTES * 4 + 1) / MAP_PIXELS + 1);
-            usStartY = (unsigned short) (((g_ucFrameNo - 1) * MAPDATA_FRAME_MAX_BYTES * 4 + 1) % MAP_PIXELS);
+        OGM_PRINT_ORANGE(
+            "FrameTotal:[%u] FrameNo:[%u] BuffLen:[%d] CRC:[0x%04X]\n",
+            ucFrameTotal,
+            g_ucFrameNo,
+            iBuffLen,
+            uiCRC);
 
-            pBuff[0]  = (unsigned char) 0xAA;
-            pBuff[1]  = (unsigned char) ((iBuffLen - UART_MAGIC_SIZE - UART_LENGTH_SIZE - UART_CHECKSUM_SIZE) >> 8);
-            pBuff[2]  = (unsigned char) ((iBuffLen - UART_MAGIC_SIZE - UART_LENGTH_SIZE - UART_CHECKSUM_SIZE) & 0xFF);
-            pBuff[3]  = (unsigned char) 0x03;
-            pBuff[4]  = (unsigned char) 0x05;
-            pBuff[5]  = ucFrameTotal;
-            pBuff[6]  = g_ucFrameNo;
-            pBuff[7]  = (unsigned char) (usStartX >> 8);
-            pBuff[8]  = (unsigned char) (usStartX & 0xFF);
-            pBuff[9]  = (unsigned char) (usStartY >> 8);
-            pBuff[10] = (unsigned char) (usStartY & 0xFF);
-            pBuff[11] = (unsigned char) (iFrameDataPointCount >> 8);
-            pBuff[12] = (unsigned char) (iFrameDataPointCount & 0xFF);
-            EncodeUartMapData(pBuff + 13, usStartX, usStartY, iFrameDataPointCount);
-            uiCRC = GenCRC(pBuff + UART_MAGIC_SIZE + UART_LENGTH_SIZE + UART_CMD_SIZE + UART_SUBCMD_SIZE,
-                           (unsigned int) iFrameDataBytesLen - 2);
-            pBuff[iBuffLen - 3] = (unsigned char) (uiCRC >> 8);
-            pBuff[iBuffLen - 2] = (unsigned char) (uiCRC & 0xFf);
-            pBuff[iBuffLen - 1] = CalcChecksum(pBuff + UART_MAGIC_SIZE + UART_LENGTH_SIZE,
-                                               UART_CMD_SIZE + UART_SUBCMD_SIZE + iFrameDataBytesLen);
+        print_as_hexstring(1, (char *) pBuff, iBuffLen);
+        write(g_nUsartfd, pBuff, iBuffLen);
+        if (pBuff)
+        {
+            free(pBuff);
+            pBuff = NULL;
+        }
 
-            OGM_PRINT_ORANGE(
-                "FrameTotal:[%u] FrameNo:[%u] FrameDataPointCount:[%u] StartAt:(x%u,y%u) BuffLen:[%d] CRC:[0x%04X]\n",
-                ucFrameTotal,
-                g_ucFrameNo,
-                iFrameDataPointCount,
-                usStartX,
-                usStartY,
-                iBuffLen,
-                uiCRC);
+        switch (ReadDataFromUart())
+        {
+            case RECV_EOK:
+                g_ucFrameNo++;
+                g_uiTotalMapDataLeft -= iFrameDataBytesLen;
+                g_uiMapDataSendOffset += iFrameDataBytesLen;
+                break;
+            case RECV_EGENERIC:
+                pthread_exit((void *) 2);
+            case RECV_ETIMEDOUT:
+                OGM_PRINT_GREEN("Send again\n");
+                break;
+        }
 
-            g_ucFrameNo++;
-            g_uiTotalMapDataLeft -= MAPDATA_FRAME_MAX_BYTES * 4;
+    } while (g_uiTotalMapDataLeft > 0);
 
-            print_as_hexstring(1, (char *) pBuff, iBuffLen);
-            write(g_nUsartfd, pBuff, iBuffLen);
-            if (pBuff)
-            {
-                free(pBuff);
-                pBuff = NULL;
-            }
-
-            switch (ReadDataFromUart())
-            {
-                case 1:
-                    pthread_exit((void *) 2);
-                    break;
-                case 3:
-                    goto next;
-            }
-
-        } while (g_uiTotalMapDataLeft > 0);
-
-        OGM_PRINT_GREEN("Send Success\n");
-
-next:;
-    }
+    OGM_PRINT_GREEN("Send Success\n");
 
     pthread_exit((void *) 0);
 }
@@ -522,22 +412,14 @@ void *RecvThread(void *arg)
     {
         FD_ZERO(&rd);
         FD_SET(g_nUsartfd, &rd);
-        memset(g_ReadBuff, 0, sizeof(g_ReadBuff));
         if (FD_ISSET(g_nUsartfd, &rd))
         {
-            printf(".\n");
             if (select(g_nUsartfd + 1, &rd, NULL, NULL, NULL) < 0)
             {
                 perror("select error\n");
             }
             else
             {
-//                iReadLen = read(g_nUsartfd, g_ReadBuff, MAX_LEN);
-//                OGM_PRINT_ORANGE("read_len:[%d]\n", iReadLen);
-//                OGM_PRINT_ORANGE("Reply:[");
-//                print_as_hexstring(0, g_ReadBuff, iReadLen);
-//                OGM_PRINT_ORANGE("]\n\n");
-
                 if (state == 0)
                 {
                     iReadLen = read(g_nUsartfd, g_ReadBuff, 1);
@@ -553,13 +435,13 @@ void *RecvThread(void *arg)
                     if (iReadLen == 1)
                     {
                         state    = 2;
-                        len_temp = (*(g_ReadBuff + recv_len) << 8);
+                        len_temp = (*(g_ReadBuff + recv_len) << 8) * 0xFF00;
                         recv_len += iReadLen;
                     }
                     else if (iReadLen == 2)
                     {
                         state    = 3;
-                        len_temp = (*(g_ReadBuff + recv_len) << 8) + *(g_ReadBuff + recv_len + 1) + 1;
+                        len_temp = ((*(g_ReadBuff + recv_len) << 8) & 0xFF00) + (*(g_ReadBuff + recv_len + 1) & 0xFF) + 1;
                         recv_len += iReadLen;
                     }
                 }
@@ -569,7 +451,7 @@ void *RecvThread(void *arg)
                     if (iReadLen == 1)
                     {
                         state = 3;
-                        len_temp += *(g_ReadBuff + recv_len) + 1;
+                        len_temp += (*(g_ReadBuff + recv_len) & 0xFF) + 1;
                         recv_len += iReadLen;
                     }
                 }
@@ -615,51 +497,57 @@ void signal_handler(int signum)
     exit(signum);
 }
 
+void FillMapData()
+{
+    int i;
+    for (i = 0; i < MAP_PIXELS * MAP_PIXELS / 2; i++)
+    {
+        g_Mapdata[i] = (unsigned char) (i);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    int  nSpeed    = 115200;
-    int  nDatabits = 8;
-    int  nStopbits = 1;
-    char nParity   = 'n';
-    char *pDevice  = "/dev/ttyS1";
+//    int  nSpeed    = 115200;
+//    int  nDatabits = 8;
+//    int  nStopbits = 1;
+//    char nParity   = 'n';
+//    char *pDevice  = "/dev/ttyS1";
+//
+//    if (argc == 2)
+//    {
+//        pDevice = argv[1];
+//    }
+//    else if (argc == 3)
+//    {
+//        pDevice = argv[1];
+//        nSpeed  = strtol(argv[2], NULL, 0);
+//    }
+//    else if (argc == 4)
+//    {
+//        pDevice = argv[1];
+//        nSpeed  = strtol(argv[2], NULL, 0);
+//        if (ReadMapDataFromFile(argv[3]))
+//        {
+//            exit(3);
+//        }
+//    }
 
-    if (argc == 2)
+    SerialOpts stSerialOpts = {
+        .nSpeed    = 460800,
+        .nDatabits = 8,
+        .nStopbits = 1,
+        .nParity   = 'n',
+        .pDevice   = "/dev/ttyS1"
+    };
+
+    if ((g_nUsartfd = open_serial(&stSerialOpts)) < 0)
     {
-        pDevice = argv[1];
-    }
-    else if (argc == 3)
-    {
-        pDevice = argv[1];
-        nSpeed  = strtol(argv[2], NULL, 0);
-    }
-    else if (argc == 4)
-    {
-        pDevice = argv[1];
-        nSpeed  = strtol(argv[2], NULL, 0);
-        if (ReadMapDataFromFile(argv[3]))
-        {
-            exit(3);
-        }
+        fprintf(stderr, "open serial failed\n");
+        exit(1);
     }
 
-    printf("use tty:%s baud:%d\n", pDevice, nSpeed);
-
-    g_nUsartfd = open(pDevice, O_RDWR | O_NOCTTY | O_NDELAY);
-    if (g_nUsartfd == -1)
-    {
-        perror("open serial failed");
-        return -1;
-    }
-    if (set_speed(g_nUsartfd, nSpeed) < 0)
-    {
-        printf("set_speed failed\n");
-        return -1;
-    }
-    if (set_Parity(g_nUsartfd, nDatabits, nStopbits, nParity) < 0)
-    {
-        printf("set_Parity failed\n");
-        return -1;
-    }
+    FillMapData();
 
     pthread_mutex_init(&g_ReadMutex, NULL);
     pthread_cond_init(&g_ReadCond, NULL);
