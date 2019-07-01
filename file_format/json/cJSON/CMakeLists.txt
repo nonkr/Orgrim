@@ -11,3 +11,4 @@ if(CMAKE_CROSSCOMPILING)
 endif()
 
 add_executable(test1 cJSON.c test1.cpp)
+add_executable(test2 cJSON.c test2.cpp)
