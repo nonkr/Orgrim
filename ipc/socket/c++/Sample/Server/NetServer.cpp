@@ -171,16 +171,6 @@ void NetServer::ServerRoutine()
                 continue;
             }
 
-//            if (pthread_create(&m_ToFDataLoopThreadID, nullptr, ToFDataLoopThread, this))
-//            {
-//                FR_PRINT_RED("Failed to create ToFDataLoopThread\n");
-//
-//                delete m_pThreadBarrier;
-//                m_pThreadBarrier = nullptr;
-//                close(m_iClientFD);
-//                continue;
-//            }
-
             m_pThreadBarrier->wait();
 
             delete m_pThreadBarrier;
