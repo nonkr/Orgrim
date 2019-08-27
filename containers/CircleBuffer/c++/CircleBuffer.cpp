@@ -24,13 +24,15 @@ CircleBuffer::~CircleBuffer()
 {
     // Delete all data
     m_pMsgDataPool->PoolCond.lock();
-    for (int i               = 0; i < MSG_POOL_SIZE; i++)
+
+    for (int i = 0; i < MSG_POOL_SIZE; i++)
     {
         delete[] m_pMsgDataPool->arrMsgData.at(i)->pData;
         m_pMsgDataPool->arrMsgData.at(i)->bRelease = true;
         m_pMsgDataPool->arrMsgData.at(i)->DataLocker.broadcast();
         delete m_pMsgDataPool->arrMsgData.at(i);
     }
+
     m_pMsgDataPool->bRelease = true;
     m_pMsgDataPool->PoolCond.broadcast();
     m_pMsgDataPool->PoolCond.unlock();
@@ -98,8 +100,23 @@ int CircleBuffer::Sub()
     return iBitsetPos;
 }
 
-int CircleBuffer::UnSub()
+int CircleBuffer::UnSub(int iBitsetPos)
 {
+    m_pMsgDataPool->PoolCond.lock();
+    m_pMsgDataPool->bsSubscribers.reset(iBitsetPos);
+
+    MsgData *pMsgData = nullptr;
+
+    for (int i = 0; i < MSG_POOL_SIZE; i++)
+    {
+        pMsgData = m_pMsgDataPool->arrMsgData.at(i);
+        pMsgData->DataLocker.lock();
+        pMsgData->bs.reset(iBitsetPos);
+        pMsgData->DataLocker.unlock();
+    }
+
+    m_pMsgDataPool->PoolCond.unlock();
+
     return 0;
 }
 
@@ -123,52 +140,45 @@ int CircleBuffer::Write(const char *pData, size_t nSize)
     }
 
     unsigned int uiEndPosition = m_pMsgDataPool->uiCurrMsgDataNum + m_pMsgDataPool->uiCurrWritePos;
+    if (uiEndPosition >= MSG_POOL_SIZE)
+    {
+        uiEndPosition -= MSG_POOL_SIZE;
+    }
+
+    FR_PRINT_BLUE("add the %uth data\n", uiEndPosition);
+
+    pMsgData = m_pMsgDataPool->arrMsgData.at(uiEndPosition);
+    pMsgData->DataLocker.lock();
+//        printf("delete pMsgData->pData:%p pMsgData->nSize:%zu\n", pMsgData->pData, pMsgData->nSize);
+    delete[] pMsgData->pData;
+    pMsgData->pData = new char[nSize + 1];
+    memset(pMsgData->pData, 0x00, nSize + 1);
+    FR_PRINT_PINK("add data:[%s]\n", pData);
+    memcpy(pMsgData->pData, pData, nSize);
+    pMsgData->nSize = nSize;
+    pMsgData->bs    = m_pMsgDataPool->bsSubscribers;
+    FR_PRINT_MAGENTA("add data, index:[%d] pMsgData->bs:[%s] pMsgData->pData:[%p:%s] pMsgData->nSize:[%zd]\n",
+                     uiEndPosition,
+                     pMsgData->bs.to_string().c_str(),
+                     pMsgData->pData,
+                     pMsgData->pData,
+                     pMsgData->nSize);
+    pMsgData->DataLocker.broadcast();
+    pMsgData->DataLocker.unlock();
+
+    m_pMsgDataPool->arrMsgData.at(uiEndPosition) = pMsgData;
     if (m_pMsgDataPool->uiCurrMsgDataNum == MSG_POOL_SIZE)
     {
-        // the circle buffer(which is implemented by MsgDataPool) is full, and under current strategy, drop the new data
-        FR_PRINT_RED("Circle Buffer is full now, drop the new data:[%s]\n", pData);
-
-
-        pMsgData = m_pMsgDataPool->arrMsgData.at(uiEndPosition);
-        pMsgData->DataLocker.lock();
-
-        pMsgData->DataLocker.unlock();
-
-        m_pMsgDataPool->PoolCond.unlock();
-        return 1;
+        FR_PRINT_RED("Circle Buffer is full now, drop the %uth data\n", uiEndPosition);
     }
     else
     {
-        if (uiEndPosition >= MSG_POOL_SIZE)
-        {
-            uiEndPosition -= MSG_POOL_SIZE;
-        }
-        FR_PRINT_BLUE("add the %uth data\n", uiEndPosition);
-
-        pMsgData = m_pMsgDataPool->arrMsgData.at(uiEndPosition);
-        pMsgData->DataLocker.lock();
-        delete pMsgData->pData;
-        pMsgData->pData = new char[nSize + 1];
-        memset(pMsgData->pData, 0x00, nSize + 1);
-        FR_PRINT_PINK("add data:[%s]\n", pData);
-        memcpy(pMsgData->pData, pData, nSize);
-        pMsgData->nSize = nSize;
-        pMsgData->bs    = m_pMsgDataPool->bsSubscribers;
-        FR_PRINT_MAGENTA("add data, index:[%d] pMsgData->bs:[%s] pMsgData->pData:[%p:%s] pMsgData->nSize:[%zd]\n",
-                         uiEndPosition,
-                         pMsgData->bs.to_string().c_str(),
-                         pMsgData->pData,
-                         pMsgData->pData,
-                         pMsgData->nSize);
-        pMsgData->DataLocker.unlock();
-
-        m_pMsgDataPool->arrMsgData.at(uiEndPosition) = pMsgData;
         m_pMsgDataPool->uiCurrMsgDataNum++;
-        m_pMsgDataPool->PoolCond.broadcast();
-        FR_PRINT_BLUE("Published MsgDataPool->uiCurrWritePos: %d\n", m_pMsgDataPool->uiCurrWritePos);
-        FR_PRINT_BLUE("Published MsgDataPool->uiCurrMsgDataNum: %d\n", m_pMsgDataPool->uiCurrMsgDataNum);
-//        SubscriberSet::PrintMsgDataPool(m_pMsgDataPool);
     }
+    m_pMsgDataPool->PoolCond.broadcast();
+    FR_PRINT_BLUE("Published MsgDataPool->uiCurrWritePos: %d\n", m_pMsgDataPool->uiCurrWritePos);
+    FR_PRINT_BLUE("Published MsgDataPool->uiCurrMsgDataNum: %d\n", m_pMsgDataPool->uiCurrMsgDataNum);
+//        SubscriberSet::PrintMsgDataPool(m_pMsgDataPool);
     m_pMsgDataPool->PoolCond.unlock();
 
     FR_PRINT_BLUE("SubscriberSet::Publish done...\n");
@@ -202,9 +212,7 @@ int CircleBuffer::Read(int iBitsetPos, char *pData, size_t *pSize)
            !pMsgData->bRelease)
     {
         FR_PRINT_ORANGE("try to read data, index:[%d] pMsgData->bs:[%s] pMsgData->pData:[%p] pMsgData->nSize:[%zu]\n",
-                        uiCurrReadPos,
-                        pMsgData->bs.to_string().c_str(),
-                        pMsgData->pData, pMsgData->nSize);
+                        uiCurrReadPos, pMsgData->bs.to_string().c_str(), pMsgData->pData, pMsgData->nSize);
         FR_PRINT_BLUE("CircleBuffer::Read DataLocker.wait()\n");
         pMsgData->DataLocker.wait();
         if (pMsgData->bRelease)
@@ -214,10 +222,9 @@ int CircleBuffer::Read(int iBitsetPos, char *pData, size_t *pSize)
         }
     }
 
-    FR_PRINT_YELLOW("read data, bitPos:[%d] index:[%d] pMsgData->bs:[%s] pMsgData->pData:[%p] pMsgData->nSize:[%zu]\n",
-                    iBitsetPos, uiCurrReadPos,
-                    pMsgData->bs.to_string().c_str(),
-                    pMsgData->pData, pMsgData->nSize);
+    FR_PRINT_YELLOW(
+        "read data, bitPos:[%d] index:[%d] pMsgData->bs:[%s] pMsgData->pData:[%p:%s] pMsgData->nSize:[%zu]\n",
+        iBitsetPos, uiCurrReadPos, pMsgData->bs.to_string().c_str(), pMsgData->pData, pMsgData->pData, pMsgData->nSize);
     memcpy(pData, pMsgData->pData, pMsgData->nSize);
     *pSize = pMsgData->nSize;
     pMsgData->bs.reset(iBitsetPos);
@@ -249,4 +256,3 @@ int CircleBuffer::Read(int iBitsetPos, char *pData, size_t *pSize)
     FR_PRINT_BLUE("CircleBuffer::Read done\n");
     return 0;
 }
-

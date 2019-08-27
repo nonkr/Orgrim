@@ -51,7 +51,7 @@ public:
 
     int Sub();
 
-    int UnSub();
+    int UnSub(int iBitsetPos);
 
     int Write(const char *pData, size_t nSize);
 

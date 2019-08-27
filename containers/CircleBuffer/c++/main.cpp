@@ -9,21 +9,40 @@ CircleBuffer *pCircleBuffer = nullptr;
 
 void *ReadA(void *arg)
 {
-    int    a       = pCircleBuffer->Sub();
-    char   *pDataA = new char[32];
+    int  iBitsetPos = pCircleBuffer->Sub();
+    char *pDataA    = new char[32];
     memset(pDataA, 0x00, 32);
-    size_t nSizeA  = 0;
+    size_t nSizeA = 0;
+
+    int iCount = 0;
 
     while (pCircleBuffer)
     {
-        if (pCircleBuffer->Read(a, pDataA, &nSizeA) == 0)
+        iCount++;
+        if (iCount == 10)
+        {
+            pCircleBuffer->UnSub(iBitsetPos);
+            sleep(1);
+            continue;
+        }
+        else if (iCount > 10 && iCount < 20)
+        {
+            sleep(1);
+            continue;
+        }
+        else if (iCount == 20)
+        {
+            iBitsetPos = pCircleBuffer->Sub();
+        }
+
+        if (pCircleBuffer->Read(iBitsetPos, pDataA, &nSizeA) == 0)
         {
             if (nSizeA > 0)
             {
                 printf("ReadA [%s]\n", pDataA);
             }
         }
-        sleep(2);
+//        sleep(2);
     }
 
     pthread_exit(nullptr);
