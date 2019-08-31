@@ -5,7 +5,6 @@
 #include <functional>
 #include "../Locker.h"
 
-#define TR_SERVER_IP_ADDR "192.168.1.143"
 #define TR_SERVER_PORT    (5401)
 
 typedef std::function<void(const char *, size_t)> fpi;

@@ -7,6 +7,7 @@ struct AppOptions_t
 {
     int     bBackground = 0;
     uint8_t nVerbose    = 0;
+    char    *pServerIP  = nullptr;
 };
 
 extern AppOptions_t G_AppOptions;

@@ -1,16 +1,17 @@
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <stdio.h>
+#include <cstdio>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <memory.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
 #include <sys/prctl.h>
 #include "NetClient.h"
 #include "../PrintUtil.h"
+#include "CmdOptions.h"
 
 int NetClient::Start()
 {
@@ -27,16 +28,16 @@ int NetClient::Start()
     memset(&address, 0x00, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_port   = htons(TR_SERVER_PORT);
-    inet_pton(AF_INET, TR_SERVER_IP_ADDR, &address.sin_addr);
+    inet_pton(AF_INET, G_AppOptions.pServerIP, &address.sin_addr);
     len = sizeof(address);
 
-    FR_PRINT_ORANGE("try to connect %s\n", TR_SERVER_IP_ADDR);
+    FR_PRINT_ORANGE("try to connect %s\n", G_AppOptions.pServerIP);
     if ((connect(m_iClientFD, (struct sockaddr *) &address, len)) == -1)
     {
         perror("connect");
         exit(EXIT_FAILURE);
     }
-    FR_PRINT_ORANGE("connected %s\n", TR_SERVER_IP_ADDR);
+    FR_PRINT_ORANGE("connected %s\n", G_AppOptions.pServerIP);
 
     m_pThreadBarrier = new barrier(3);
 

@@ -18,6 +18,12 @@ int main(int argc, char *argv[])
 
     ParseCmdOptions(argc, argv);
 
+    if (G_AppOptions.pServerIP == nullptr)
+    {
+        printf("Need server ip\n");
+        return 1;
+    }
+
     // 将程序运行在后台
     if (G_AppOptions.bBackground)
     {
