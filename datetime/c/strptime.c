@@ -21,7 +21,7 @@ void test1()
     char       *szBuffer    = __DATE__ " " __TIME__;
     const char *pFormat     = "%b %d %Y %H:%S:%M"; // reference: http://man7.org/linux/man-pages/man3/strptime.3.html
     char       tmBuffer[64] = {0};
-    struct tm  tmTemp;
+    struct tm  tmTemp       = {0};
 
     strptime(szBuffer, pFormat, &tmTemp);
     strftime(tmBuffer, 64, "%y-%m-%d %H:%S:%M", &tmTemp);
@@ -36,7 +36,7 @@ void test2()
     char       *szBuffer    = "2019-09-26 14:57:00";
     const char *pFormat     = "%Y-%m-%d %H:%S:%M"; // reference: http://man7.org/linux/man-pages/man3/strptime.3.html
     char       tmBuffer[64] = {0};
-    struct tm  tmTemp;
+    struct tm  tmTemp       = {0};
 
     strptime(szBuffer, pFormat, &tmTemp);
     strftime(tmBuffer, 64, "%Y-%m-%d %H:%S:%M", &tmTemp);
@@ -44,6 +44,9 @@ void test2()
     printf("\ntest2:\n");
     printf("src:[%s]\n", szBuffer);
     printf("%s\n", tmBuffer);
+
+    time_t timeSinceEpoch = mktime(&tmTemp);
+    printf("timeSinceEpoch:%ld\n", timeSinceEpoch);
 }
 
 int main(void)
