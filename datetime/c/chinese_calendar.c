@@ -148,7 +148,7 @@ int main()
     const char *ChMonth[] = {"*", "正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "腊"};
     int        year, month, day;
     char       str[13]    = "";
-#if 0
+//#if 0
     struct tm  *Local;
     long       t;
     t = time(NULL);
@@ -156,13 +156,13 @@ int main()
     year = Local->tm_year + 1900;
     month = Local->tm_mon + 1;
     day = Local-> tm_mday;
-#else
-    year                  = 2013;
-    month                 = 2;
-    day                   = 10;
-    printf("请依次输入公历的年月日（例如2013年1月2日，输入：2013-1-2）");
-    scanf("%d-%d-%d", &year, &month, &day);
-#endif
+//#else
+//    year                  = 2013;
+//    month                 = 2;
+//    day                   = 10;
+//    printf("请依次输入公历的年月日（例如2013年1月2日，输入：2013-1-2）");
+//    scanf("%d-%d-%d", &year, &month, &day);
+//#endif
     printf("%d年%d月%d日\t", year, month, day);
     if (LunarCalendar(year, month, day))
     {
