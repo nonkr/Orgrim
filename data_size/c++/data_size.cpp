@@ -11,6 +11,7 @@
 
 #include <fstream>
 #include <climits>
+#include "pack.h"
 
 using namespace std;
 
@@ -42,5 +43,8 @@ int main(int argc, char *argv[])
     printf("size of streampos:[%zu]\n", sizeof(streampos));
     printf("size of streamsize:[%zu]\n", sizeof(streamsize));
     printf("size of streamoff:[%zu]\n", sizeof(streamoff));
+
+    printf("size of struct PeoplePacked:[%zu]\n", sizeof(PeoplePacked));
+    printf("size of struct PeopleUnPacked:[%zu]\n", sizeof(PeopleUnPacked));
     return 0;
 }
