@@ -8,3 +8,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
 
 add_executable(list list.cpp)
 add_executable(list_remove list_remove.cpp)
+add_executable(list_erase list_erase.cpp)
