@@ -39,29 +39,27 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    system_clock::time_point old = system_clock::now();
-
     while (true)
     {
         iReadLen = read(fd, buf, 1024);
-        system_clock::time_point now      = system_clock::now();
-        auto                     duration = duration_cast<microseconds>(now - old);
-        double                   s        =
-                                     double(duration.count()) * microseconds::period::num / microseconds::period::den;
-        old = now;
-//        if (s > 0.025)
+//        printf("iReadLen:[%d]\n", iReadLen);
+        for (int i = 0; i < iReadLen; i++)
+        {
+            printf("0x%02X ", buf[i] & 0xFF);
+        }
+////        if (s > 0.025)
+////        {
+////            FR_PRINT_MAGENTA("Time duration of read: %f sec.\n", s);
+////        }
+//        if (iReadLen <= 36)
 //        {
-//            FR_PRINT_MAGENTA("Time duration of read: %f sec.\n", s);
+////            printf("%d\n", iReadLen);
 //        }
-        if (iReadLen <= 36)
-        {
-//            printf("%d\n", iReadLen);
-        }
-        else
-        {
-            printf("0x%02X 0x%02X 0x%02X\n", buf[iReadLen - 36], buf[iReadLen - 2], buf[iReadLen - 1]);
-            FR_PRINT_RED("%d\n", iReadLen);
-        }
+//        else
+//        {
+//            printf("0x%02X 0x%02X 0x%02X\n", buf[iReadLen - 36], buf[iReadLen - 2], buf[iReadLen - 1]);
+//            FR_PRINT_RED("%d\n", iReadLen);
+//        }
     }
 
     close_serial(fd);
