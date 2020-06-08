@@ -52,6 +52,6 @@ int main(int argc, char *argv[])
 
     while (true)
     {
-        sleep(UINT32_MAX);
+        sleep(UINT16_MAX);
     }
 }
