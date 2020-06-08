@@ -50,5 +50,8 @@ int main(int argc, char *argv[])
 
     PingUtil::getInstance().Init(argv[1]);
 
-    while (true);
+    while (true)
+    {
+        sleep(UINT32_MAX);
+    }
 }
