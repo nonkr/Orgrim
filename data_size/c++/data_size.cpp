@@ -11,6 +11,7 @@
 
 #include <fstream>
 #include <climits>
+#include "pack.h"
 
 using namespace std;
 
@@ -23,6 +24,21 @@ enum SWITCH2 : unsigned char
 {
     SWITCH2_OPEN,
 };
+
+#pragma pack(push, 1)
+struct Segment
+{
+    uint16_t magic;         // Magic Number
+    uint16_t length;        // 包长(length字段之后的所有长度)
+    uint32_t sn;            // Sequence Number
+    uint32_t ack;           // Acknowledgment Number
+    uint32_t sack;          // Shadow Acknowledgment Number
+    uint16_t options;       // need ACK
+    uint8_t  command;       // Command Type
+    uint8_t  checksum;      // Checksum
+    int8_t   data[0];
+};
+#pragma pack(pop)
 
 int main(int argc, char *argv[])
 {
@@ -42,5 +58,10 @@ int main(int argc, char *argv[])
     printf("size of streampos:[%zu]\n", sizeof(streampos));
     printf("size of streamsize:[%zu]\n", sizeof(streamsize));
     printf("size of streamoff:[%zu]\n", sizeof(streamoff));
+
+    printf("size of struct PeoplePacked:[%zu]\n", sizeof(PeoplePacked));
+    printf("size of struct PeopleUnPacked:[%zu]\n", sizeof(PeopleUnPacked));
+
+    printf("size of struct Segment:[%zu]\n", sizeof(Segment));
     return 0;
 }
