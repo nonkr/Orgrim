@@ -24,11 +24,14 @@ add_executable(recursive_mutex mutex/recursive_mutex.cpp)
 add_executable(timed_mutex mutex/timed_mutex.cpp)
 add_executable(lock_guard mutex/lock_guard.cpp)
 add_executable(unique_lock mutex/unique_lock.cpp)
+add_executable(unique_lock2 mutex/unique_lock2.cpp)
 
 add_executable(condition_variable0 condition_variable/condition_variable0.cpp)
 add_executable(condition_variable condition_variable/condition_variable.cpp)
 add_executable(condition_variable2 condition_variable/condition_variable2.cpp)
 add_executable(condition_variable3 condition_variable/condition_variable3.cpp)
+
+add_executable(test_barrier barrier/test_barrier.cpp)
 
 find_package(Threads)
 if (CMAKE_THREAD_LIBS_INIT)
@@ -48,9 +51,12 @@ if (CMAKE_THREAD_LIBS_INIT)
     target_link_libraries(timed_mutex "${CMAKE_THREAD_LIBS_INIT}")
     target_link_libraries(lock_guard "${CMAKE_THREAD_LIBS_INIT}")
     target_link_libraries(unique_lock "${CMAKE_THREAD_LIBS_INIT}")
+    target_link_libraries(unique_lock2 "${CMAKE_THREAD_LIBS_INIT}")
 
     target_link_libraries(condition_variable0 "${CMAKE_THREAD_LIBS_INIT}")
     target_link_libraries(condition_variable "${CMAKE_THREAD_LIBS_INIT}")
     target_link_libraries(condition_variable2 "${CMAKE_THREAD_LIBS_INIT}")
     target_link_libraries(condition_variable3 "${CMAKE_THREAD_LIBS_INIT}")
+
+    target_link_libraries(test_barrier "${CMAKE_THREAD_LIBS_INIT}")
 endif ()

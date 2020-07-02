@@ -13,17 +13,16 @@
 #include <iostream>
 #include <thread>
 
-using namespace std;
-
 const int NUM = 100;
 
-int target = 0;
-atomic<int> atomicTarget(0);
+int              target = 0;
+std::atomic<int> atomicTarget(0);
 
 template<typename T>
 void atomicPlusOne(int trys)
 {
-    while (trys > 0) {
+    while (trys > 0)
+    {
         atomicTarget.fetch_add(1);
         --trys;
     }
@@ -31,7 +30,8 @@ void atomicPlusOne(int trys)
 
 void plusOne(int trys)
 {
-    while (trys > 0) {
+    while (trys > 0)
+    {
         ++target;
         --trys;
     }
@@ -39,24 +39,28 @@ void plusOne(int trys)
 
 int main()
 {
-    thread threads[NUM];
-    thread atomicThreads[NUM];
-    for (int i = 0; i < NUM; i++) {
-        atomicThreads[i] = thread(atomicPlusOne<int>, 10000);
+    std::thread threads[NUM];
+    for (int    i = 0; i < NUM; i++)
+    {
+        threads[i] = std::thread(plusOne, 10000);
     }
-    for (int i = 0; i < NUM; i++) {
-        threads[i] = thread(plusOne, 10000);
-    }
-
-    for (int i = 0; i < NUM; i++) {
-        atomicThreads[i].join();
-    }
-    for (int i = 0; i < NUM; i++) {
+    for (int    i = 0; i < NUM; i++)
+    {
         threads[i].join();
     }
 
-    cout << "Atomic target's value : " << atomicTarget << "\n";
-    cout << "Non-atomic target's value : " << target << "\n";
+    std::thread atomicThreads[NUM];
+    for (int    i = 0; i < NUM; i++)
+    {
+        atomicThreads[i] = std::thread(atomicPlusOne<int>, 10000);
+    }
+    for (int    i = 0; i < NUM; i++)
+    {
+        atomicThreads[i].join();
+    }
+
+    std::cout << "Atomic target's value : " << atomicTarget << "\n";
+    std::cout << "Non-atomic target's value : " << target << "\n";
     // atomicTarget的值总是固定的，而target的值每次运行时各不相同
     //
     // g++ -std=c++11 -pthread ./atomic.cpp
