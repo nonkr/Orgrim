@@ -3,15 +3,20 @@
 #include <limits.h>
 #include <memory.h>
 
-#define BITMASK(b)          (1 << ((b) % CHAR_BIT))
-#define BITSLOT(b)          ((b) / CHAR_BIT)
-#define BITSET(a, b)        ((a)[BITSLOT(b)] |= BITMASK(b))
-#define BITCLEAR(a, b)      ((a)[BITSLOT(b)] &= ~BITMASK(b))
-#define BITTEST(a, b)       ((a)[BITSLOT(b)] & BITMASK(b))
-#define BITNSLOTS(nb)       ((nb + CHAR_BIT - 1) / CHAR_BIT)
-#define BITLEN(a)           (sizeof(a) / sizeof(char))
-#define BITCLEAR_ALL(arr)   memset(arr, 0, BITLEN(arr));
-#define BITSET_ALL(arr)     memset(arr, UCHAR_MAX, BITLEN(arr));
+#define BITMASK(b)                  (1 << ((b) % CHAR_BIT))
+#define BITSLOT(b)                  ((b) / CHAR_BIT)
+#define BITSET(a, b)                ((a)[BITSLOT(b)] |= BITMASK(b))
+#define BITCLEAR(a, b)              ((a)[BITSLOT(b)] &= ~BITMASK(b))
+#define BITTEST(a, b)               ((a)[BITSLOT(b)] & BITMASK(b))
+#define BITNSLOTS(nb)               ((nb + CHAR_BIT - 1) / CHAR_BIT)
+#define BITLEN(a)                   (sizeof(a) / sizeof(char))
+#define BITCLEAR_ALL(arr)           memset(arr, 0, BITLEN(arr));
+#define BITSET_ALL(arr, MAX_COUNT)  do { \
+                                        for (int i = 0; i < MAX_COUNT; i++) \
+                                        { \
+                                            BITSET(arr, i); \
+                                        } \
+                                    } while (0);
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \
