@@ -11,3 +11,4 @@ endif ()
 
 add_executable(convert_hexstring_to_buffer convert_hexstring_to_buffer.c)
 add_executable(convert_hexstring_to_buffer2 convert_hexstring_to_buffer2.c)
+add_executable(snprintf snprintf.c)
