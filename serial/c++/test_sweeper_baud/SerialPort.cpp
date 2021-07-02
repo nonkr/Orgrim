@@ -28,33 +28,244 @@
 #include <sys/ioctl.h>
 
 #include "SerialPort.h"
+#include "serial.h"
+#include "SysUtil.h"
 #include "../../../common/PrintUtil.h"
-#include "../../../common/DebugUtil.h"
+#include "../../../common/TimeUtil.h"
 
 using namespace std;
 using namespace chrono;
 
-int speed_arr2[] = {B1500000, B460800, B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B300, B38400,
-                    B19200,
-                    B9600,
-                    B4800, B2400, B1200, B300,};
-int name_arr2[]  = {1500000, 460800, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400, 19200, 9600, 4800,
-                    2400,
-                    1200, 300,};
-
-SerialPort::SerialPort(std::string name, int baud) : m_InitBarrier(3)
+static void PrintAsHexString(const int type, const unsigned char *pData, size_t len)
 {
-    m_Usartfd   = -1;
-    m_TtyName   = name;
-    m_nSpeed    = baud;
-    m_nDatabits = 8;
-    m_nStopbits = 1;
-    m_nParity   = 'n';
-    m_bRunning  = false;
+    char arrBuff[4096 * 2] = {0};
+    int  iBuffOffset       = 0;
+    int  iStrLen           = 0;
+
+    char *pLabel = nullptr;
+    char *color  = nullptr;
+    if (type == 0)
+    {
+        pLabel = (char *) "Send";
+        color  = (char *) KMAGENTA;
+    }
+    else if (type == 1)
+    {
+        pLabel = (char *) "Recv";
+        color  = (char *) KCYAN;
+    }
+    else if (type == 2)
+    {
+        pLabel = (char *) "SendErr";
+        color  = (char *) KRED;
+    }
+    else if (type == 3)
+    {
+        pLabel = (char *) "RecvErr";
+        color  = (char *) KRED;
+    }
+    iStrLen      = strlen(pLabel) + 3 + 29 + strlen(color);
+    snprintf(arrBuff + iBuffOffset, iStrLen, "[%s] %s%s:[", TimeUtil::TimeNowStringMS().c_str(), color, pLabel);
+    iBuffOffset += iStrLen - 1;
+
+    for (uint16_t i = 0; i < len; i++)
+    {
+        if (i == len - 1)
+        {
+            snprintf(arrBuff + iBuffOffset, 3, "%02X", pData[i]);
+            iBuffOffset += 2;
+        }
+        else
+        {
+            snprintf(arrBuff + iBuffOffset, 4, "%02X ", pData[i]);
+            iBuffOffset += 3;
+        }
+    }
+
+    iStrLen = strlen("]\n") + 1 + strlen(KRESET);
+    snprintf(arrBuff + iBuffOffset, iStrLen, "]%s\n", KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    if (iBuffOffset > 0) FR_PRINT("DebugUtil", "%s", arrBuff);
 }
 
-SerialPort::~SerialPort()
+static void PrintUartFrame(const char *pLabel, UartFrame *pFrame, bool bIgnore)
 {
+//    if (bIgnore)
+//    {
+//        if (g_stRobotOption.stAppDebugSwitch.iUARTPrintRecvIgnoreFastReg && pFrame->command == MCT_M2H_FAST_REG)
+//            return;
+//        if (g_stRobotOption.stAppDebugSwitch.iUARTPrintRecvIgnoreSlowReg && pFrame->command == MCT_M2H_SLOW_REG)
+//            return;
+//    }
+#if 1
+    uint16_t cChecksum     = 0;
+    char     arrBuff[4096] = {0};
+    int      iBuffOffset   = 0;
+    int      iStrLen       = 0;
+
+    iStrLen = strlen(pLabel) + 3;
+    snprintf(arrBuff + iBuffOffset, iStrLen, "%s:[", pLabel);
+    iBuffOffset += iStrLen - 1;
+
+    // magic
+    if (pFrame->magic == UART_FRAME_MAGIC_NUMBER)
+    {
+        iStrLen = strlen(KYELLOW) + 5 + strlen(KRESET) + 1;
+        snprintf(arrBuff + iBuffOffset, iStrLen, "%s%02X %02X%s", KYELLOW, ((char *) pFrame)[0],
+                 ((char *) pFrame)[1],
+                 KRESET);
+    }
+    else
+    {
+        iStrLen = strlen(KRED) + 5 + strlen(KRESET) + 1;
+        snprintf(arrBuff + iBuffOffset, iStrLen, "%s%02X %02X%s", KRED, ((char *) pFrame)[0], ((char *) pFrame)[1],
+                 KRESET);
+    }
+    iBuffOffset += iStrLen - 1;
+
+    // length
+    iStrLen = strlen(KGREEN) + 6 + strlen(KRESET) + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X %02X%s", KGREEN, ((char *) pFrame)[2], ((char *) pFrame)[3],
+             KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    // id
+    iStrLen = 12 + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %02X %02X %02X %02X", ((char *) pFrame)[4], ((char *) pFrame)[5],
+             ((char *) pFrame)[6], ((char *) pFrame)[7]);
+    iBuffOffset += iStrLen - 1;
+
+    // command
+    iStrLen = strlen(KLIMEGREEN) + 3 + strlen(KRESET) + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X%s", KLIMEGREEN, ((char *) pFrame)[8], KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    // options
+    iStrLen = strlen(KORANGE) + 3 + strlen(KRESET) + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X%s", KORANGE, ((char *) pFrame)[9], KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    // sn
+    iStrLen = strlen(KCYAN) + 6 + strlen(KRESET) + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X %02X%s", KCYAN, ((char *) pFrame)[10], ((char *) pFrame)[11],
+             KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    // ack
+    iStrLen = strlen(KMAGENTA) + 6 + strlen(KRESET) + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X %02X%s", KMAGENTA, ((char *) pFrame)[12],
+             ((char *) pFrame)[13], KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    // sack
+    iStrLen = strlen(KBLUE) + 6 + strlen(KRESET) + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X %02X%s", KBLUE, ((char *) pFrame)[14], ((char *) pFrame)[15],
+             KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    // frag_sn
+    iStrLen = strlen(KCYAN) + 6 + strlen(KRESET) + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X %02X%s", KCYAN, ((char *) pFrame)[16], ((char *) pFrame)[17],
+             KRESET);
+    iBuffOffset += iStrLen - 1;
+
+    // checksum
+    uint16_t checksumInData = pFrame->checksum;
+    uint32_t id             = pFrame->id;
+    pFrame->checksum = 0;
+    pFrame->id       = 0;
+    uint16_t checksum = SysUtil::CalcChecksum((void *) pFrame, pFrame->length + UART_FRAME_SIZE_BEFORE_WITH_LENGTH);
+    pFrame->checksum = checksumInData;
+    pFrame->id       = id;
+    if (checksum == pFrame->checksum)
+    {
+        iStrLen = strlen(KPINK) + 6 + strlen(KRESET) + 1;
+        snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X %02X%s", KPINK, ((char *) pFrame)[18],
+                 ((char *) pFrame)[19], KRESET);
+    }
+    else
+    {
+        iStrLen = strlen(KRED) + 6 + strlen(KRESET) + 1;
+        snprintf(arrBuff + iBuffOffset, iStrLen, " %s%02X %02X%s", KRED, ((char *) pFrame)[20],
+                 ((char *) pFrame)[21], KRESET);
+    }
+    iBuffOffset += iStrLen - 1;
+
+    uint16_t dataLen = pFrame->length - UART_FRAME_SIZE_AFTER_LENGTH;
+    uint8_t  *pData  = pFrame->data;
+
+    for (uint16_t i = 0; i < dataLen; i++)
+    {
+        snprintf(arrBuff + iBuffOffset, 4, " %02X", pData[i]);
+        iBuffOffset += 3;
+    }
+
+    iStrLen = strlen("]\n") + 1;
+    snprintf(arrBuff + iBuffOffset, iStrLen, "]\n");
+    iBuffOffset += iStrLen - 1;
+
+    if (iBuffOffset > 0) FR_PRINT("DebugUtil", "%s", arrBuff);
+#else
+    //    FR_PRINT("DebugUtil", "%s", "Recv:[AA AA 54 01 5B 00 00 00 F3 00 00 00 00 00 00 00 00 00 B1 48 11 01 14 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01]\n");
+    //    printf("%s", "Recv:[AA AA 54 01 5B 00 00 00 F3 00 00 00 00 00 00 00 00 00 B1 48 11 01 14 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01]\n");
+        printf("%s", "Recv:[AA AA 54 01 5B 00 00 00 F3 00 00 00 00 00 00]\n");
+#endif
+}
+
+SerialPort::SerialPort(std::string name, int baud) : m_InitBarrier(2)
+{
+    m_Usartfd  = -1;
+    m_TtyName  = name;
+    m_nSpeed   = baud;
+    m_bRunning = false;
+}
+
+bool SerialPort::Init(CommRecvCallBack recvCallBack, bool bBlock)
+{
+    FR_PRINT_BLUE("uart", "Serial port init\n");
+    m_RecvCallBack = recvCallBack;
+
+    m_Usartfd = OpenTTY(m_TtyName.c_str(), bBlock);
+
+    if (m_Usartfd <= 0)
+    {
+        FR_PRINT_RED("uart", "Failed to open %s\n", m_TtyName.c_str());
+        return false;
+    }
+
+    if (SetBaud(m_Usartfd, m_nSpeed) < 0)
+    {
+        FR_PRINT_RED("uart", "Failed to set baud %d\n", m_nSpeed);
+        return false;
+    }
+
+    if (SetOpt(m_Usartfd, 8, 1, 'n') < 0)
+    {
+        FR_PRINT_RED("uart", "Failed to set options\n");
+        return false;
+    }
+
+    gRecv_Count = 0;
+    memset(gRecv_Buff, 0, sizeof(gRecv_Buff));
+
+    if (!m_bRunning)
+    {
+        m_bRunning = true;
+
+        m_RecvThrd = std::thread(&SerialPort::RecvingThread, this);
+
+        m_InitBarrier.wait();
+    }
+
+    FR_PRINT_BLUE("uart", "Serial port init done\n");
+    return true;
+}
+
+bool SerialPort::DeInit()
+{
+    FR_PRINT_GREEN("uart", "SerialPort DeInit\n");
+
     m_bRunning = false;
 
     ioctl(m_Usartfd, TIOCSTI, "please unblock");
@@ -64,291 +275,39 @@ SerialPort::~SerialPort()
         m_RecvThrd.join();
     }
 
-    if (m_SendThrd.joinable())
-    {
-        m_CondSendData.lock();
-        m_bSendData = true;
-        m_CondSendData.signal();
-        m_CondSendData.unlock();
-        m_SendThrd.join();
-    }
-
     close(m_Usartfd);
 
-}
-
-bool SerialPort::Init(CommRecvCallBack recvCallBack, bool bBlock)
-{
-    m_RecvCallBack = recvCallBack;
-
-    if (bBlock)
-    {
-        m_Usartfd = open(m_TtyName.c_str(), O_RDWR);
-    }
-    else
-    {
-        m_Usartfd = open(m_TtyName.c_str(), O_RDWR | O_NONBLOCK);
-    }
-
-    if (m_Usartfd <= 0)
-    {
-//        LOGD("%s Open Failed !!!!", m_TtyName.c_str());
-        return false;
-    }
-
-    if (SetBaud() < 0)
-    {
-//        LOGD("Failed to Set Baud !!!");
-        return false;
-    }
-
-    if (SetOpt() < 0)
-    {
-//        LOGD("Failed to Set Opt !!!");
-        return false;
-    }
-
-    gSend_Count = 0;
-    memset(gSend_Buff, 0, sizeof(gSend_Buff));
-    gRecv_Count = 0;
-    memset(gRecv_Buff, 0, sizeof(gRecv_Buff));
-
-    if (!m_bRunning)
-    {
-        m_bRunning = true;
-
-        m_SendThrd = std::thread(&SerialPort::SendingThread, this);
-        m_RecvThrd = std::thread(&SerialPort::RecvingThread, this);
-
-        m_InitBarrier.wait();
-    }
-
-//    LOGD("Serial port %s init success !!!", m_TtyName.c_str());
+    FR_PRINT_GREEN("uart", "SerialPort DeInit done\n");
     return true;
 }
 
-
-int SerialPort::SetBaud()
-{
-    unsigned char  i;
-    int            status;
-    struct termios Opt;
-    tcgetattr(m_Usartfd, &Opt);
-    for (i = 0; i < (sizeof(speed_arr2) / sizeof(speed_arr2[0])); i++)
-    {
-        if (m_nSpeed == name_arr2[i])
-        {
-            tcflush(m_Usartfd, TCIOFLUSH);
-            cfsetispeed(&Opt, speed_arr2[i]);
-            cfsetospeed(&Opt, speed_arr2[i]);
-            status = tcsetattr(m_Usartfd, TCSANOW, &Opt);
-            if (status != 0)
-            {
-                perror("tcsetattr fd1");
-                return -1;
-            }
-            tcflush(m_Usartfd, TCIOFLUSH);
-        }
-    }
-    return 0;
-}
-
-int SerialPort::SetOpt()
-{
-    struct termios options;
-    if (tcgetattr(m_Usartfd, &options) != 0)
-    {
-        perror("SetupSerial 1");
-        return -1;
-    }
-    options.c_cflag &= ~CSIZE;
-    switch (m_nDatabits)
-    {
-        case 7:
-            options.c_cflag |= CS7;
-            break;
-        case 8:
-            options.c_cflag |= CS8;
-            break;
-        default:
-            FR_PRINT_RED("UART", "Unsupported data size\n");
-            return -1;
-    }
-    switch (m_nParity)
-    {
-        case 'n':
-        case 'N':
-            options.c_cflag &= ~PARENB;    /* Clear parity enable */
-            options.c_iflag &= ~INPCK;    /* Enable parity checking */
-            break;
-        case 'o':
-        case 'O':
-            options.c_cflag |= (PARODD | PARENB);
-            options.c_iflag |= INPCK;    /* Disnable parity checking */
-            break;
-        case 'e':
-        case 'E':
-            options.c_cflag |= PARENB;    /* Enable parity */
-            options.c_cflag &= ~PARODD;
-            options.c_iflag |= INPCK;    /* Disnable parity checking */
-            break;
-        case 'S':
-        case 's':            /*as no parity */
-            options.c_cflag &= ~PARENB;
-            options.c_cflag &= ~CSTOPB;
-            break;
-        default:
-            FR_PRINT_RED("UART", "Unsupported parity\n");
-            return -1;
-    }
-
-    switch (m_nStopbits)
-    {
-        case 1:
-            options.c_cflag &= ~CSTOPB;
-            break;
-        case 2:
-            options.c_cflag |= CSTOPB;
-            break;
-        default:
-            FR_PRINT_RED("UART", "Unsupported stop bits\n");
-            return -1;
-    }
-
-    options.c_lflag &= ~(ICANON | ISIG);
-    options.c_iflag &= ~(ICRNL | IGNCR);
-
-    // reference: https://linux.die.net/man/3/cfmakeraw
-    cfmakeraw(&options);
-
-    /* Set input parity option */
-    if (m_nParity != 'n')
-        options.c_iflag |= INPCK;
-    tcflush(m_Usartfd, TCIFLUSH);
-    options.c_cc[VTIME] = 150;
-    options.c_cc[VMIN]  = 0;    /* Update the options and do it NOW */
-    if (tcsetattr(m_Usartfd, TCSANOW, &options) != 0)
-    {
-        perror("SetupSerial 3");
-        return -1;
-    }
-    return 0;
-}
-
-int SerialPort::PackSendData(SerialPortData *pData, unsigned char *pPackedData)
-{
-    if ((pData->len > 1) && (nullptr == pData->data))
-        return -1;
-
-    if (nullptr == pPackedData)
-        return -1;
-
-    SerialPortHeader *header = (SerialPortHeader *) pPackedData;
-    header->head = COMM_HEADER;
-    header->len  = pData->len + 1; //1 for type len
-    header->type = pData->type;
-
-    uint8_t *data      = pPackedData + sizeof(SerialPortHeader);
-    uint8_t ucChecksum = pData->type;
-    if (pData->len > 1)
-    {
-        for (int i = 0; i < pData->len; i++)
-        {
-            data[i] = pData->data[i];
-            ucChecksum += data[i];
-        }
-    }
-
-    data[pData->len] = ucChecksum;
-
-    return 0;
-}
-
-int SerialPort::AddToSendBuf(SerialPortData *pData)
-{
-    int ret = -1;
-    if (nullptr == pData)
-        return ret;
-
-    unsigned char packedData[COMM_MAX_SEND_LEN] = {0x00};
-
-    int length = sizeof(SerialPortHeader) + pData->len + sizeof(SerialPortEnd);
-
-    if (PackSendData(pData, packedData) < 0)
-    {
-//        LOGD("Pack Data Failed!!!");
-        return ret;
-    }
-
-    if ((gSend_Count + length) < COMM_BUFFER_MAX_LEN)
-    {
-        m_CondSendData.lock();
-        memcpy(gSend_Buff + gSend_Count, packedData, length);
-        gSend_Count += length;
-        ret         = 0;
-        m_bSendData = true;
-        m_CondSendData.signal();
-        m_SendCnt++;
-        m_CondSendData.unlock();
-    }
-    else
-    {
-        ret = -2;
-        //LOGD("Send Buffer Fulled !!!!!!");
-    }
-
-    return ret;
-}
-
-void SerialPort::ResetCounts()
-{
-    m_SendCnt = 0;
-    m_RecvCnt = 0;
-}
-
 /**	@fn	     CheckRecvData(unsigned char* buf,unsigned char recv_len)
- *	@brief	 check the CRCbyte
- *	@param   buf--------recv data buf 
- *  @param   recv_len --- recv data length
- *	@return	 correct data:0,  wrong data: -1  
- *  @note    
+ *	@brief	 check the frame header
+ *	@param   pFrame ---  recv frame buffer
+ *	@return	 correct data:0,  wrong data: -1
+ *  @note
 */
-int SerialPort::CheckRecvData(unsigned char *buf, size_t recv_len)
+int SerialPort::CheckRecvData(UartFrame *pFrame)
 {
-    if (nullptr == buf)
-        return -1;
-
-    SerialPortHeader *header = (SerialPortHeader *) buf;
-    uint8_t          head    = header->head;
-    uint16_t         len     = header->len - 1;//1 for type len
-    uint8_t          type    = header->type;
-
-    //check head
-    if (head != COMM_HEADER)
+    // 校验magic number
+    if (pFrame->magic != UART_FRAME_MAGIC_NUMBER)
     {
-//        LOGD("Cmd Head wrong !!!");
+        FR_PRINT_RED("uart", "Wrong magic number:0x%04X\n", pFrame->magic);
         return -1;
     }
 
-    //check data len
-    if (recv_len < len + sizeof(SerialPortHeader))
-    {
-//        LOGD("Cmd not completion!\n");
-        return -1;
-    }
-
-    //check sum
-    uint8_t  checkSum = type;
-    uint8_t  *data    = buf + sizeof(SerialPortHeader);
-    for (int i        = 0; i < len; i++)
-    {
-        checkSum += data[i];
-    }
-
-    if (checkSum != data[len])
+    // 校验checksum
+    uint16_t checksumInData = pFrame->checksum;
+    uint32_t id             = pFrame->id;
+    pFrame->id       = 0;
+    pFrame->checksum = 0;
+    uint16_t checksum = SysUtil::CalcChecksum((void *) pFrame, pFrame->length + UART_FRAME_SIZE_BEFORE_WITH_LENGTH);
+    pFrame->checksum = checksumInData;
+    pFrame->id       = id;
+    if (checksum != pFrame->checksum)
     {
         FR_PRINT_RED("UART", "uart checksum wrong\n");
-        DebugUtil::PrintAsHexString("RecvFailed", buf, recv_len, false);
+        PrintAsHexString(3, (unsigned char *) pFrame, pFrame->length + UART_FRAME_SIZE_BEFORE_WITH_LENGTH);
         return -1;
     }
 
@@ -364,129 +323,59 @@ int SerialPort::CheckRecvData(unsigned char *buf, size_t recv_len)
  *			  -1:  data is null or not commplete
  			  -2:   data check wrong
  			  -3:   other reason
- *  @note    
+ *  @note
 */
-int SerialPort::HandleRecvData(unsigned char *buf, int len)
-{
-    if ((nullptr == buf) || (len < COMM_MIN_RECV_LEN))
-    {
-//        UART_PRINT("recv data is wrong or not integrity!\n");
-        return -1;
-    }
+#define FR_PRINT_G(tag, ...) printf(KGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_G2(tag, ...)  printf(KGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
 
-    if (CheckRecvData(buf, len) < 0)
+int SerialPort::HandleRecvData(UartFrame *pFrame)
+{
+    if (CheckRecvData(pFrame) < 0)
     {
-        FR_PRINT_RED("UART", "Check received cmd data failure\n");
+//        FR_PRINT_RED("UART", "Check received cmd data failure\n");
         return -2;
     }
-
-    SerialPortHeader *header = (SerialPortHeader *) buf;
-    SerialPortData   body;
-    body.type = header->type;
-    body.len  = header->len - 1; //l for type len
-    body.data = buf + sizeof(SerialPortHeader);
-
     //receive call back
-    m_RecvCallBack(&body);
-    m_RecvCnt++;
+//    FR_PRINT_G2("carrier", "Lidar count:%d\n", 10);
+//    FR_PRINT_G2("carrier", "Lidar count:%d\n", 20);
+//    FR_PRINT_G2("carrier", "Lidar count:%d\n", 30);
+//    FR_PRINT_G2("carrier", "Lidar count:%d\n", 40);
+
+//    test();
+
+//    printf(KGREEN "Lidar count:%d\n" KRESET, 10);
+//    printf(KGREEN "Lidar count:%d\n" KRESET, 20);
+//    printf(KGREEN "Lidar count:%d\n" KRESET, 30);
+//    printf(KGREEN "Lidar count:%d\n" KRESET, 40);
+
+//    printf("id:%u\n", pFrame->id);
+//    usleep(10000);
+    m_RecvCallBack(pFrame);
     return 0;
 }
 
-/**	@fn	     SendingThread()
- *	@brief	 the thread of send data 
- *	@param   nullptr
- *	@return	 nullptr
- *  @note    
-*/
-void SerialPort::SendingThread()
-{
-    prctl(PR_SET_NAME, "UART_T");
-
-//    MsgMgr           &pMQ          = MsgMgr::getInstance();
-//    HIK_ABNORMALType kAbnormalType = AB_USART_FAULT;
-
-    m_InitBarrier.wait();
-    while (m_bRunning)
-    {
-        unsigned char            cSendBuff[COMM_BUFFER_MAX_LEN];
-        int                      len = 0;
-        system_clock::time_point tpTmp;
-
-        m_CondSendData.lock();
-        while (!m_bSendData)
-        {
-            m_CondSendData.wait();
-        }
-
-        if (!m_bRunning)
-        {
-            m_CondSendData.unlock();
-            break;
-        }
-
-        if (gSend_Count >= COMM_BUFFER_MAX_LEN)
-        {
-            gSend_Count = 0;
-        }
-        if (gSend_Count > 0)
-        {
-            len = write(m_Usartfd, gSend_Buff, gSend_Count); //none block !!!!
-
-            if (len < 0)
-            {
-                FR_PRINT_RED("UART", "send data to PORT failed!\n");
-//                SYSLOG_ERROR("%s", "send data to PORT failed!");
-//                pMQ.Publish(T_HIK_FAULT, (unsigned char *) &kAbnormalType, 1);
-                m_CondSendData.unlock();
-                continue;
-            }
-            else if (0 == len)
-            {
-                m_CondSendData.unlock();
-                continue;
-            }
-            else
-            {
-//                if (g_stRobotOption.stAppDebugSwitch.iUARTPrintSend)
-//                {
-//                    DebugUtil::PrintAsHexString("Send", gSend_Buff, len, false);
-//                }
-
-                if (len == gSend_Count)
-                    gSend_Count = 0;
-                else if (len < gSend_Count)
-                {
-                    gSend_Count -= len;
-                    memset(cSendBuff, 0, gSend_Count);
-                    memcpy(cSendBuff, gSend_Buff + len, gSend_Count);
-                    memcpy(gSend_Buff, cSendBuff, gSend_Count);
-                }
-            }
-        }
-
-        m_bSendData = false;
-
-        m_CondSendData.unlock();
-    }
-}
 
 /**	@fn	     RecvingThread()
  *	@brief	 the thread of receive data
  *	@param   nullptr
  *	@return	 nullptr
- *  @note    
+ *  @note
 */
 void SerialPort::RecvingThread()
 {
-    int           iReadLen;
-    int           state    = 0;
-    int           len_temp = 0;
-    int           recv_len = 0;
-    unsigned char buf[COMM_BUFFER_MAX_LEN];
+    int             iReadLen = 0;
+    UART_RECV_STATE state    = WAIT_MAGIC_NUMBER;
+    int             len_temp = 0;
+    int             recv_len = 0;
+    unsigned char   buf[COMM_BUFFER_MAX_LEN];
+    UartFrame       *pFrame  = nullptr;
+    unsigned char   errorBuff[COMM_BUFFER_MAX_LEN * 2];
+    int             errorBuffOffset = 0;
+
     memset(buf, 0, sizeof(buf));
     fd_set rd;
 
-    prctl(PR_SET_NAME, "UART_R");
+    SysUtil::SetThreadName("UART_R");
 
     m_InitBarrier.wait();
 
@@ -495,7 +384,9 @@ void SerialPort::RecvingThread()
         FD_ZERO(&rd);
         FD_SET(m_Usartfd, &rd);
         while (FD_ISSET(m_Usartfd, &rd))
+//        while (true)
         {
+//            printf("before select()\n");
             if (select(m_Usartfd + 1, &rd, nullptr, nullptr, nullptr) < 0)
             {
                 perror("select error\n");
@@ -504,95 +395,184 @@ void SerialPort::RecvingThread()
             {
                 if (!m_bRunning) break;
 
-                /*use status machine to control one commplete frame of data received*/
-                if (state == 0) // handle first byte        
-                {
-                    iReadLen = read(m_Usartfd, buf, 1);
+//                printf("before read\n");
+//                TICK(a2)
+//                iReadLen = read(m_Usartfd, buf, 2048);
+//                TOCK(a2, "read")
+//                printf("iReadLen:%d\n", iReadLen);
+//                sleep(1);
 
-                    if (iReadLen == 1 && *(buf) == COMM_HEADER)
+#if 0
+                iReadLen = read(m_Usartfd, buf, 2048);
+                printf("iReadLen:%d\n", iReadLen);
+#else
+                /*use status machine to control one commplete frame of data received*/
+                if (state == WAIT_MAGIC_NUMBER) // 循环查找双字节的magic number
+                {
+                    iReadLen = read(m_Usartfd, buf, 2);
+
+                    if (iReadLen == 1 && *(buf) == UART_FRAME_MAGIC_NUMBER >> 8)
                     {
-                        //FR_PRINT_RED("UART", "\n Recv header : [%02X]\n", *(buf));
-                        state = 1;
+                        state = WAIT_MAGIC_NUMBER_SECOND_BYTE;  // 已收到magic的第一个字节，继续等magic的第二个字节
+                        recv_len += iReadLen;
+                    }
+                    else if (iReadLen == 2)
+                    {
+                        if (*(buf + 1) == (UART_FRAME_MAGIC_NUMBER & 0xFF)) // magic的第二个字节正确
+                        {
+                            if (*(buf) == UART_FRAME_MAGIC_NUMBER >> 8) // magic的第一个字节也正确
+                            {
+                                state = WAIT_LENGTH;  // 已收到完整的magic字段，等待接收length字段
+                                recv_len += iReadLen;
+                            }
+                            else
+                            {
+                                state = WAIT_MAGIC_NUMBER_SECOND_BYTE;  // 只收到magic的第一个字节，继续等magic的第二个字节
+                                *(buf) = *(buf + 1);
+                                recv_len += 1;
+                            }
+                        }
+                        else
+                        {
+//                            FR_PRINT_RED("UART", "Recv1: [%02X %02X]\n", *(buf), *(buf + 1));
+                            memcpy(errorBuff + errorBuffOffset, buf, iReadLen);
+                            errorBuffOffset += iReadLen;
+                        }
+                    }
+                    else
+                    {
+//                        FR_PRINT_RED("UART", "Recv2: [%02X]\n", *(buf));
+                        memcpy(errorBuff + errorBuffOffset, buf, iReadLen);
+                        errorBuffOffset += iReadLen;
+                    }
+                }
+                else if (state == WAIT_MAGIC_NUMBER_SECOND_BYTE) // 只收到magic的第一个字节，继续等magic的第二个字节
+                {
+                    iReadLen = read(m_Usartfd, buf + recv_len, 1);
+
+                    if (iReadLen == 1 && *(buf + recv_len) == (UART_FRAME_MAGIC_NUMBER & 0xFF))
+                    {
+                        state = WAIT_LENGTH;  // 已收到完整的magic字段，等待接收length字段
                         recv_len += iReadLen;
                     }
                     else
                     {
-                        FR_PRINT_RED("UART", "Recv: [%02X]\n", *(buf));
+                        recv_len = 0;
+                        state    = WAIT_MAGIC_NUMBER;  // 收到的字节不符合magic number，重新开始接收magic numebr
+//                        FR_PRINT_RED("UART", "Recv3: [%02X]\n", *(buf + recv_len));
+                        memcpy(errorBuff + errorBuffOffset, buf, iReadLen);
+                        errorBuffOffset += iReadLen;
                     }
                 }
-                else if (state == 1) // receive the first byte of 2bytes data length 
+                else if (state == WAIT_LENGTH) // 等待接收2个字节的length
                 {
                     iReadLen = read(m_Usartfd, buf + recv_len, 2);
                     if (iReadLen == 1)
                     {
-                        state    = 2;
+                        state    = WAIT_LENGTH_SECOND_BYTE; // 只收到length的第一个字节，继续等length的第二个字节
                         len_temp = *(buf + recv_len);
                         recv_len += iReadLen;
-                        // at present, the max value of length is PROTO_LENGTH_MAX_NUMBER, so the first byte should be 0
-                        if (len_temp > 0)
-                        {
-                            recv_len = 0;
-                            state    = 0;
-                            FR_PRINT_RED("UART", "Error: length:[%d] > %d\n", len_temp, COMM_DATA_MAX_LEN);
-                        }
                     }
                     else if (iReadLen == 2)
                     {
-                        state    = 3;
-                        len_temp = ((*(buf + recv_len + 1) << 8) & 0xFF00) + (*(buf + recv_len) & 0xFF) + 1;
+                        state    = WAIT_REST_FRAME_AND_DATA; // 按长度接收剩余的字节数据
+                        len_temp = ((*(buf + recv_len + 1) << 8) & 0xFF00) + (*(buf + recv_len) & 0xFF);
                         recv_len += iReadLen;
-                        // at present, the max value of length is PROTO_LENGTH_MAX_NUMBER
-                        if (len_temp > COMM_DATA_MAX_LEN)
+                        if (len_temp > UART_FRAME_MAX_SIZE)
                         {
                             recv_len = 0;
-                            state    = 0;
-                            FR_PRINT_RED("UART", "Error: length:[%d] > %d\n", len_temp, COMM_DATA_MAX_LEN);
+                            state    = WAIT_MAGIC_NUMBER;
+                            FR_PRINT_RED("UART", "Error: length:[%d] > %d\n", len_temp, UART_FRAME_MAX_SIZE);
+                            memcpy(errorBuff + errorBuffOffset, buf, iReadLen);
+                            errorBuffOffset += iReadLen;
                         }
                     }
                 }
-                else if (state == 2) // receive the next byte of data length
+                else if (state == WAIT_LENGTH_SECOND_BYTE) // 只收到length的第一个字节，继续等length的第二个字节
                 {
                     iReadLen = read(m_Usartfd, buf + recv_len, 1);
                     if (iReadLen == 1)
                     {
-                        state = 3;
-                        len_temp += (((*(buf + recv_len)) << 8) & 0xFF00) + 1;
+                        state = WAIT_REST_FRAME_AND_DATA;
+                        len_temp += (((*(buf + recv_len)) << 8) & 0xFF00);
                         recv_len += iReadLen;
                         // at present, the max value of length is PROTO_LENGTH_MAX_NUMBER
-                        if (len_temp > COMM_DATA_MAX_LEN)
+                        if (len_temp > UART_FRAME_MAX_SIZE)
                         {
                             recv_len = 0;
-                            state    = 0;
-                            FR_PRINT_RED("UART", "Error: length:[%d] > %d\n", len_temp, COMM_DATA_MAX_LEN);
+                            state    = WAIT_MAGIC_NUMBER;
+                            FR_PRINT_RED("UART", "Error: length:[%d] > %d\n", len_temp, UART_FRAME_MAX_SIZE);
+                            memcpy(errorBuff + errorBuffOffset, buf, iReadLen);
+                            errorBuffOffset += iReadLen;
                         }
                     }
                 }
-                else // receive the rest data
+                else // 按长度接收剩余的字节数据
                 {
-                    static int last = 0;
-                    iReadLen = read(m_Usartfd, buf + recv_len + last, len_temp - last);
+                    static int last      = 0;
+                    int        lenToRead = len_temp - last;
+//                    if (lenToRead > 50)
+//                    {
+//                        lenToRead = 50;
+//                    }
+//                    if (last == 0)
+//                    {
+//                        printf("recv_len + last:%d\n", recv_len + last);
+//                    }
+                    iReadLen = read(m_Usartfd, buf + recv_len + last, lenToRead);
+//                    printf("iReadLen:%d\n", iReadLen);
                     if (iReadLen < (len_temp - last) && iReadLen > 0)
                     {
                         last += iReadLen;
                     }
                     else
                     {
+                        if (errorBuffOffset > 0)
+                        {
+                            PrintAsHexString(3, errorBuff, errorBuffOffset);
+                            errorBuffOffset = 0;
+                        }
+
                         recv_len += len_temp;
                         last  = 0;
-                        state = 0;
+                        state = WAIT_MAGIC_NUMBER;
 
-//                        if (g_stRobotOption.stAppDebugSwitch.iUARTPrintReceive)
+//                        TICK(a)
+//                        printf("\n=====================:%d\n", recv_len);
+//                        for (int jj = 0; jj < recv_len; jj++)
 //                        {
-//                            DebugUtil::PrintAsHexString("Recv", buf, recv_len, true);
+//                            printf("%02X ", buf[jj] & 0xFF);
+//                        }
+//                        printf("33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333\n");
+//                        printf("33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333\n");
+//                        printf("33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333\n");
+//                        printf("33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333\n");
+//                        printf("33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333\n");
+//                        usleep(130000);
+//                        TOCK(a, "printf")
+                        pFrame = (UartFrame *) buf;
+
+//                        printf("id:%u\n", pFrame->id);
+//                        for (int i = 24; i < recv_len; i++)
+//                        {
+//                            if (buf[i] != 0x55)
+//                            {
+//                                printf(KRED "i:%d [0x%02X]\n" KRESET, i, buf[i]);
+//                            }
 //                        }
 
-                        if (HandleRecvData(buf, recv_len) < 0)
+                        if (HandleRecvData(pFrame) != 0)
                         {
 //                            FR_PRINT_RED("UART", "recv data parsed failed!\n");
+                        }
+                        else if (0)
+                        {
+                            PrintUartFrame("Recv", pFrame, true);
                         }
                         recv_len = 0;
                     }
                 }
+#endif
             }
         }
     }

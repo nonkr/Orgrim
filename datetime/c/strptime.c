@@ -49,11 +49,28 @@ void test2()
     printf("timeSinceEpoch:%ld\n", timeSinceEpoch);
 }
 
+void test3()
+{
+    char       *szBuffer    = "Wed Jan 13 17:20:07 CST 2021";
+    const char *pFormat     = "%a %b %d %H:%S:%M CST %Y"; // reference: http://man7.org/linux/man-pages/man3/strptime.3.html
+    char       tmBuffer[64] = {0};
+    struct tm  tmTemp       = {0};
+
+    strptime(szBuffer, pFormat, &tmTemp);
+    strftime(tmBuffer, 64, "%Y-%m-%d %H:%S:%M", &tmTemp);
+
+    printf("\ntest3:\n");
+    printf("src:[%s]\n", szBuffer);
+    printf("%s\n", tmBuffer);
+}
+
 int main(void)
 {
     test1();
 
     test2();
+
+    test3();
 
     return 0;
 }

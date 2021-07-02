@@ -63,6 +63,12 @@ int ReadFile(char *pFile, vector<BarometerInfo> &a)
     return 0;
 }
 
+/**
+ * 读取静止状态下的标准大气压值，多台设备采集时，可多次读取，拟合曲线
+ * @param pFile
+ * @param a
+ * @return
+ */
 int ReadStandardFile(char *pFile, vector<StandardBarometerInfo> &a)
 {
     ifstream fp(pFile);
@@ -85,10 +91,10 @@ int ReadStandardFile(char *pFile, vector<StandardBarometerInfo> &a)
         }
         CSV::ParseLine(line.c_str(), oneline);
 
-        int i = atoi(oneline.at(2).c_str());
-        memcpy(a.at(i).arrElement[a.at(i).count].arrDateTime, oneline.at(1).c_str(), 20);
+        int i = atoi(oneline.at(2).c_str());                                                // 第三列(seconds)
+        memcpy(a.at(i).arrElement[a.at(i).count].arrDateTime, oneline.at(1).c_str(), 20);   // 第二列(datetime)
         a.at(i).arrElement[a.at(i).count].seconds   = i;
-        a.at(i).arrElement[a.at(i).count].barometer = atoi(oneline.at(4).c_str());
+        a.at(i).arrElement[a.at(i).count].barometer = atoi(oneline.at(4).c_str());          // 第五列(当前大气压)
         a.at(i).count++;
     }
     fp.close();
@@ -126,9 +132,9 @@ int main(int argc, char *argv[])
     vector<BarometerInfo>         orig(86400);
     vector<StandardBarometerInfo> standard(86400);
 
-    ReadFile(argv[1], orig);
-    ReadStandardFile(argv[2], standard);
-    ReadStandardFile(argv[3], standard);
+    ReadFile(argv[1], orig);                // 风机工作时采集到的样本
+    ReadStandardFile(argv[2], standard);    // 风机停止时采集到的样本1
+    ReadStandardFile(argv[3], standard);    // 风机停止时采集到的样本2
 
 //    char arrFilename[128] = {0};
 //    sprintf(arrFilename, "%s_merged.csv", basename(argv[1]));

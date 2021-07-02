@@ -2,5 +2,9 @@
 <project version="4">
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/memory/MemoryPool/c++/MemoryChunk.cpp" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/serial/c++/test_sweeper_baud/SysUtil.h" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/serial/c++/test_sweeper_baud/barrier.h" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/serial/c++/test_sweeper_baud/serial.cpp" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/serial/c++/test_sweeper_baud/serial.h" charset="GBK" />
   </component>
 </project>

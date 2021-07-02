@@ -17,6 +17,13 @@
 using namespace std;
 using namespace chrono;
 
+struct RuntimeInfo
+{
+    system_clock::time_point t;
+};
+
+RuntimeInfo g_stRuntimeInfo;
+
 int main()
 {
     system_clock::time_point t;
@@ -26,6 +33,9 @@ int main()
     t = system_clock::now();
 
     printf("now: %ld\n", t.time_since_epoch().count());
+
+//    g_stRuntimeInfo.t = system_clock::from_time_t(0);
+    printf("g_stRuntimeInfo.t: %ld\n", g_stRuntimeInfo.t.time_since_epoch().count());
 
     return 0;
 }

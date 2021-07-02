@@ -10,5 +10,6 @@ if (CMAKE_CROSSCOMPILING)
 endif ()
 
 add_executable(ceil ceil.c)
+add_executable(rand rand.c)
 
 target_link_libraries(ceil m)

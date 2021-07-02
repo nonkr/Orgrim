@@ -14,87 +14,60 @@
 #include <mutex>
 #include <thread>
 #include <iostream>
+#include "McuProtocol.h"
+#include "barrier.h"
 #include "../../../common/Locker.h"
 
-static const int COMM_HEADER			= 0xAA;
-static const int COMM_INTERVAL			= 0xFF;
-static const int COMM_BUFFER_MAX_LEN	= 1680;
+using namespace std;
 
-static const int COMM_DATA_MAX_LEN		= 600;
-static const int COMM_MIN_SEND_LEN		= 4;
-static const int COMM_MAX_SEND_LEN		= 415;
-static const int COMM_MIN_RECV_LEN		= 4;
-static const int COMM_CHECK_SUM_LEN		= 1;
+static const int COMM_BUFFER_MAX_LEN = 2 * 1024;
 
-#pragma pack(push,1)
-struct SerialPortHeader
+static const int COMM_MAX_SEND_LEN = 415;
+static const int COMM_MIN_RECV_LEN = sizeof(UartFrame);
+
+enum UART_RECV_STATE
 {
-	uint8_t head = COMM_HEADER;
-	uint16_t len = 0;
-	uint8_t type = 0;
+    WAIT_MAGIC_NUMBER,
+    WAIT_MAGIC_NUMBER_SECOND_BYTE,
+    WAIT_LENGTH,
+    WAIT_LENGTH_SECOND_BYTE,
+    WAIT_REST_FRAME_AND_DATA,
 };
 
-struct SerialPortData
-{	
-	uint16_t len = 0; //not in real body
-	uint8_t type = 0; //not in real body
-	uint8_t *data = nullptr;
-};
-
-struct SerialPortEnd
-{
-	uint8_t checkSum = 0;
-};
-
-#pragma pack(pop)
-
-typedef void(*CommRecvCallBack)(SerialPortData*);
+typedef void(*CommRecvCallBack)(UartFrame *);
 
 class SerialPort
 {
 public:
-	SerialPort(std::string name, int baud);
-    virtual ~SerialPort();
+    SerialPort(std::string name, int baud);
+
+    ~SerialPort() = default;
+
     bool Init(CommRecvCallBack recvCallBack, bool bBlock);
-	int AddToSendBuf(SerialPortData * pData);
-	void ResetCounts();
-	inline int GetSendCount() { return m_SendCnt; }
-	inline int GetRecvCount() { return m_RecvCnt; }
+
+    bool DeInit();
+
 private:
     int         m_Usartfd;
     std::string m_TtyName;
     int         m_nSpeed;
-    int         m_nDatabits;
-    int         m_nStopbits;
-    char        m_nParity;
 
-    unsigned char gSend_Buff[COMM_BUFFER_MAX_LEN];
     unsigned char gRecv_Buff[COMM_BUFFER_MAX_LEN];
-    int           gSend_Count;
     int           gRecv_Count;
 
     bool m_bRunning;
 
-	int m_SendCnt = 0;
-	int m_RecvCnt = 0;
-
 private:
-    barrier     m_InitBarrier;
-    std::thread m_RecvThrd;
-    std::thread m_SendThrd;
-	CommRecvCallBack m_RecvCallBack;
+    swp::barrier     m_InitBarrier;
+    std::thread      m_RecvThrd;
+    std::thread      m_SendThrd;
+    CommRecvCallBack m_RecvCallBack;
 
-    bool m_bSendData = false;
-    cond m_CondSendData;
+    mutex m_mutex;
 
-	int SetBaud();
-	int SetOpt();
-	int PackSendData(SerialPortData * pData, unsigned char * pPackedData);
+    int CheckRecvData(UartFrame *pFrame);
 
-    int CheckRecvData(unsigned char *buf, size_t recv_len);
-    int HandleRecvData(unsigned char *buf, int len);
+    int HandleRecvData(UartFrame *pFrame);
 
-    void SendingThread();
     void RecvingThread();
-
 };

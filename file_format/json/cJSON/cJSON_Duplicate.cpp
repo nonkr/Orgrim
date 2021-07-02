@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include "cJSON.h"
 
 int main(int argc, char *argv[])

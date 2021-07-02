@@ -1,9 +1,4 @@
-//
-// Created by songbinbin on 2019/8/21.
-//
-
-#ifndef __NET_SERVER_APP_H__
-#define __NET_SERVER_APP_H__
+#pragma once
 
 #include <cstdlib>
 #include "NetClient.h"
@@ -20,5 +15,3 @@ public:
 private:
     NetClient *m_pNetClient = nullptr;
 };
-
-#endif //__NET_SERVER_APP_H__

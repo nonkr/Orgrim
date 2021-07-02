@@ -16,12 +16,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <inttypes.h>
 #include "../../color.h"
 #include "serial.h"
 
 #define UART_BUFF_MEX_LEN 1680
 static const int G_MAGIC_NUMBER = 0xAA;
-static const int MAX_LEN      = UART_BUFF_MEX_LEN;  //缓冲区最大长度
+static const int MAX_LEN        = UART_BUFF_MEX_LEN;  //缓冲区最大长度
 
 int g_nUsartfd;
 
@@ -29,6 +30,33 @@ static unsigned long long g_ullTotalRecvCount    = 0ULL;
 static unsigned long long g_ullTotalErrRecvCount = 0ULL;
 
 static int g_iSenderBuffLen;
+
+struct Mcu2HostFastReg
+{
+    //里程计积分量
+    int32_t  opticalFlowX;//光流x
+    int32_t  opticalFlowY;//光流y
+    int32_t  leftPos;     //左轮
+    int32_t  rightPos;    //右轮
+    int32_t  yawPos;      //水平面角度积分
+    //单点tof，psd
+    uint16_t psdLeft;
+    uint16_t psdRight;
+    uint16_t psdFront;
+    //底层解算的位姿
+    int32_t  odoX;
+    int32_t  odoY;
+    int32_t  odoPhi;
+    //倾斜角
+    int32_t  pitch;
+    int32_t  roll;
+    //实测速度
+    int32_t  v;
+    int32_t  w;
+    //lidar tof
+    uint16_t lidarLeft;
+    uint16_t lidarRight;
+};
 
 void print_as_hexstring(const int iIsSend, const unsigned char *pData, int iDataLen)
 {
@@ -162,9 +190,7 @@ void *RecvThread(void *arg)
     fd_set        rd;
     int           iReadLen = 0;
     unsigned char buf[MAX_LEN];
-    int           state    = 0;
-    int           recv_len = 0;
-    int           len_temp = 0;
+    int           i;
 
     printf("RecvThread...\n");
 
@@ -181,103 +207,17 @@ void *RecvThread(void *arg)
             }
             else
             {
-//                iReadLen = read(g_nUsartfd, buf, MAX_LEN);
-//                OGM_PRINT_ORANGE("read_len:[%d]\n", iReadLen);
-//                print_as_hexstring(0, (char *) buf, iReadLen);
-
-                if (state == 0)
+                iReadLen = read(g_nUsartfd, buf, 60);
+//                printf("iReadLen:%d\n", iReadLen);
+                for (i   = 0; i < iReadLen; i++)
                 {
-                    iReadLen = read(g_nUsartfd, buf, 1);
-                    if (iReadLen == 1 && (*(buf) & 0xFF) == G_MAGIC_NUMBER)
+                    if (buf[i] != 0x55)
                     {
-                        state = 1;
-                        recv_len += iReadLen;
+                        printf("0x%02X ", buf[i]);
                     }
                 }
-                else if (state == 1)
-                {
-                    iReadLen = read(g_nUsartfd, buf + recv_len, 2);
-                    if (iReadLen == 1)
-                    {
-                        state    = 2;
-                        len_temp = (*(buf + recv_len) << 8) & 0xFF00;
-                        recv_len += iReadLen;
-//                        OGM_PRINT_BLUE("LEN1:0x%02X\n", buf[1]);
-                        if (buf[1] != (g_iSenderBuffLen - 4) >> 8)
-                        {
-                            recv_len = 0;
-                            state    = 0;
-                            g_ullTotalRecvCount++;
-                            g_ullTotalErrRecvCount++;
-                            OGM_PRINT_CYAN("TotalRecv:[%llu] TotalErrorRecv:[%llu/%.2f%%] error length code1\n",
-                                           g_ullTotalRecvCount,
-                                           g_ullTotalErrRecvCount,
-                                           g_ullTotalErrRecvCount * 1.0 / g_ullTotalRecvCount * 100);
-                        }
-                    }
-                    else if (iReadLen == 2)
-                    {
-                        state    = 3;
-                        len_temp = ((*(buf + recv_len) << 8) & 0xFF00) + (*(buf + recv_len + 1) & 0xFF) + 1;
-                        recv_len += iReadLen;
-//                        OGM_PRINT_BLUE("#LEN1:0x%02X\n", buf[1]);
-//                        OGM_PRINT_BLUE("#LEN2:0x%02X\n", buf[2]);
-                        // TODO: 对读取的长度进行判断，不能超过预设的buffer长度
-                        if (len_temp - 1 != g_iSenderBuffLen - 4)
-                        {
-                            recv_len = 0;
-                            state    = 0;
-                            g_ullTotalRecvCount++;
-                            g_ullTotalErrRecvCount++;
-                            OGM_PRINT_CYAN("TotalRecv:[%llu] TotalErrorRecv:[%llu/%.2f%%] error length code2\n",
-                                           g_ullTotalRecvCount,
-                                           g_ullTotalErrRecvCount,
-                                           g_ullTotalErrRecvCount * 1.0 / g_ullTotalRecvCount * 100);
-                        }
-                    }
-                }
-                else if (state == 2)
-                {
-                    iReadLen = read(g_nUsartfd, buf + recv_len, 1);
-                    if (iReadLen == 1)
-                    {
-                        state = 3;
-                        len_temp += (*(buf + recv_len) & 0xFF) + 1;
-                        recv_len += iReadLen;
-//                        OGM_PRINT_BLUE("LEN2:0x%02X\n", buf[2]);
-                        if (len_temp - 1 != g_iSenderBuffLen - 4)
-                        {
-                            recv_len = 0;
-                            state    = 0;
-                            g_ullTotalRecvCount++;
-                            g_ullTotalErrRecvCount++;
-                            OGM_PRINT_CYAN("TotalRecv:[%llu] TotalErrorRecv:[%llu/%.2f%%] error length code3\n",
-                                           g_ullTotalRecvCount,
-                                           g_ullTotalErrRecvCount,
-                                           g_ullTotalErrRecvCount * 1.0 / g_ullTotalRecvCount * 100);
-                        }
-                    }
-                }
-                else
-                {
-                    static int last = 0;
-//                    printf("len_temp:[%d] last:[%d]\n", len_temp, last);
-                    iReadLen = read(g_nUsartfd, buf + recv_len + last, len_temp - last);
-                    if (iReadLen < (len_temp - last) && iReadLen > 0)
-                    {
-                        last += iReadLen;
-                    }
-                    else
-                    {
-                        recv_len += len_temp;
-                        last = 0;
-
-                        state = 0;
-                        print_as_hexstring(0, (unsigned char *) buf, recv_len);
-                        DecodeBigBuffer(buf, recv_len);
-                        recv_len = 0;
-                    }
-                }
+//                printf("\n");
+                fflush(stdout);
             }
         }
     }
@@ -305,15 +245,13 @@ int main(int argc, char **argv)
     char nParity   = 'n';
     char *pDevice  = "/dev/ttyS1";
 
-    if (argc < 3)
+    if (argc < 2)
     {
-        printf("Usage: %s /dev/ttyS1 baud bufflen\n", argv[0]);
+        printf("Usage: %s baud\n", argv[0]);
         exit(2);
     }
 
-    pDevice          = argv[1];
-    nSpeed           = strtol(argv[2], NULL, 0);
-    g_iSenderBuffLen = strtol(argv[3], NULL, 0);
+    nSpeed = strtol(argv[1], NULL, 0);
 
     printf("use tty:%s baud:%d\n", pDevice, nSpeed);
 
@@ -336,6 +274,8 @@ int main(int argc, char **argv)
 
     pthread_t RxID;
     int       iRet;
+
+    printf("%zu\n", sizeof(struct Mcu2HostFastReg));
 
     iRet = pthread_create(&RxID, NULL, RecvThread, NULL);
     if (iRet)

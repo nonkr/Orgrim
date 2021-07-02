@@ -11,39 +11,29 @@
 
 #include "TimeUtil.h"
 
-void test_for()
+void test1()
 {
-    unsigned int  i, j, k;
-    unsigned int  iToFPixels   = 320 * 240;
-    unsigned int  iToFDataSize = 320 * 240 * 4;
-    short         sAmplitudeNormal[320 * 240] __attribute__((__unused__));
-    short         sPhaseNormal[320 * 240]  __attribute__((__unused__));
-    short         sFlagNormal[320 * 240]   __attribute__((__unused__));
-    unsigned char raw[320 * 240 * 4 * 2];
-
-    for (i = 0, k = 0; i < iToFDataSize; i += 32)
+    FR_DURATION_AVG(x, "test1");
+    int r1 = rand() % (10 - 1 + 1) + 1;
+    int r;
+    if (r1 >= 8)
     {
-        for (j = 0; j < 16; j += 2)
-        {
-            sAmplitudeNormal[iToFPixels - 1 - k] = (short) ((raw[(i + j) * 2]) |
-                                                            (raw[(i + j + 1) * 2] << 8 & 0x0F00));
-            sPhaseNormal[iToFPixels - 1 - k]     = (short) ((raw[(i + j + 16) * 2]) |
-                                                            (raw[(i + j + 1 + 16) * 2] << 8 &
-                                                             0x0F00));
-            sFlagNormal[iToFPixels - 1 - k]      = (short) (raw[(i + j + 1 + 16) * 2] >> 7);
-            k++;
-        }
+        r = rand() % (3000 - 100 + 1) + 100;
     }
+    else
+    {
+        r = rand() % (300 - 100 + 1) + 100;
+    }
+    printf("usleep %d\n", r);
+    usleep(r * 1000);
 }
 
 int main(int argc, char *argv[])
 {
-    TICK(x)
-    for (int i = 0; i < 10000000; i++)
+    srand(time(NULL));
+    for (int i = 0; i < 300; i++)
     {
-//        printf("%d\n", i);
-        test_for();
+        test1();
     }
-    TOCK(x, "for")
     return 0;
 }

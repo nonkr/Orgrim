@@ -16,11 +16,14 @@ int CSV::ParseLine(const char *pStr, vector<string> &oneline)
         pPosComma = strchr(pDup, ',');
         if (pPosComma == nullptr)
         {
-            if (pDup && strlen(pDup) > 0)
+            if (pDup)
             {
                 strlength = strlen(pDup);
                 memset(buffer, 0x00, sizeof(buffer));
-                memcpy(buffer, pDup, strlength);
+                if (strlen(pDup) > 0)
+                {
+                    memcpy(buffer, pDup, strlength);
+                }
                 s = buffer;
                 oneline.emplace_back(s);
             }

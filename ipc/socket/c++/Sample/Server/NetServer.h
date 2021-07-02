@@ -1,5 +1,4 @@
-#ifndef __NETSERVER_H__
-#define __NETSERVER_H__
+#pragma once
 
 #include <pthread.h>
 #include <functional>
@@ -10,8 +9,8 @@
 
 typedef std::function<void(const char *, size_t)> fpi;
 
-#define SubscribeRecvHandle(srv, callback) \
-                        srv.SetRecvHandle(std::bind(callback, this, std::placeholders::_1, std::placeholders::_2));
+#define RegisterRecvHandle(srv, callback) \
+                        srv.SetRecvHandle(std::bind(callback, this, std::placeholders::_1, std::placeholders::_2))
 
 class NetServer
 {
@@ -46,7 +45,7 @@ private:
     size_t    m_SendBufferLen   = 0;
     cond      m_condClientSend;
 
-    NetServer() {};
+    NetServer() = default;
 
     ~NetServer();
 
@@ -64,5 +63,3 @@ private:
 
     void SendRoutine();
 };
-
-#endif // __NETSERVER_H__

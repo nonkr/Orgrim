@@ -1,6 +1,3 @@
-//
-// Created by songbinbin on 2019/8/21.
-//
 
 #include <cstdlib>
 #include <cstring>
@@ -11,7 +8,7 @@
 ClientApp::ClientApp()
 {
     m_pNetClient = new NetClient;
-    SubscribeRecvHandle(m_pNetClient, &ClientApp::MessageRecvHandle)
+    RegisterRecvHandle(m_pNetClient, &ClientApp::MessageRecvHandle);
     m_pNetClient->Start();
 }
 

@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(c_thread)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -DORGRIM_DEBUG")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -DORGRIM_DEBUG")
 
 add_executable(hellothread hellothread.c)
 add_executable(hellothread2 hellothread2.c)
@@ -15,6 +16,7 @@ add_executable(simple_threadpool_test simple_threadpool_test.c simple_threadpool
 add_executable(thread_priority thread_priority.c)
 add_executable(thread_mutex_trylock thread_mutex_trylock.c)
 add_executable(thread_once thread_once.c)
+add_executable(setstack setstack.c)
 
 find_package(Threads)
 if(CMAKE_THREAD_LIBS_INIT)
@@ -29,6 +31,7 @@ if(CMAKE_THREAD_LIBS_INIT)
     target_link_libraries(thread_priority "${CMAKE_THREAD_LIBS_INIT}")
     target_link_libraries(thread_mutex_trylock "${CMAKE_THREAD_LIBS_INIT}")
     target_link_libraries(thread_once "${CMAKE_THREAD_LIBS_INIT}")
+    target_link_libraries(setstack "${CMAKE_THREAD_LIBS_INIT}")
 endif()
 
 target_link_libraries(thread_joinable m)

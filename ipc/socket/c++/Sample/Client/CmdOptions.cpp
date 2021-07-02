@@ -25,6 +25,7 @@ void Usage(const char *pProg)
            " -v                \x1B[45Gverbose level, support 1~3 level by v, vv, or vvv\n"
            "\n"
            " -I, --ip <ip>\x1B[45Gserver ip\n"
+           " -P, --port <port>\x1B[45Gserver port(default:8080)\n"
            "\n",
            basename(pProg)
     );
@@ -76,6 +77,7 @@ int ParseCmdOptions(int argc, char *argv[])
                                  {"full-version", no_argument,       nullptr, 0},
 
                                  {"ip",           required_argument, nullptr, 'I'},
+                                 {"port",         required_argument, nullptr, 'P'},
 
                                  {nullptr,        no_argument,       nullptr, 'v'},
                                  {nullptr, 0,                        nullptr, 0}
@@ -83,7 +85,7 @@ int ParseCmdOptions(int argc, char *argv[])
 
     opterr = 0;
     int option_index = 0;
-    while ((c = getopt_long(argc, argv, "BhVvI:", long_options, &option_index)) != -1)
+    while ((c = getopt_long(argc, argv, "BhVvI:P:", long_options, &option_index)) != -1)
     {
         switch (c)
         {
@@ -117,10 +119,15 @@ int ParseCmdOptions(int argc, char *argv[])
                 G_AppOptions.pServerIP = optarg;
                 break;
 
+            case 'P':
+                G_AppOptions.nServerPort = atoi(optarg);
+                break;
+
             case '?':
                 switch (optopt)
                 {
                     case 'I':
+                    case 'P':
                         fprintf(stderr, "Option -%c requires an argument.\n", optopt);
                         Usage(argv[0]);
                         exit(1);

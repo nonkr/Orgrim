@@ -11,7 +11,7 @@
 ServerApp::ServerApp()
 {
     NetServer &pNetServer = NetServer::getInstance();
-    SubscribeRecvHandle(pNetServer, &ServerApp::MessageRecvHandle)
+    RegisterRecvHandle(pNetServer, &ServerApp::MessageRecvHandle);
 }
 
 ServerApp::~ServerApp()

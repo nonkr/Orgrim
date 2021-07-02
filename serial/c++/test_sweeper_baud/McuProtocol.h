@@ -3,205 +3,130 @@
 #include <inttypes.h>
 
 #define MCU_SERIAL_PORT_NAME    "/dev/ttyS1"
-#define MCU_SERIAL_PORT_BAUD    460800
+#define MCU_SERIAL_PORT_BAUD    (921600)
 
-#define DEBUG_REG_SIZE            12
+#define UART_PROTOCOL_VERSION       "V0.0.9 build 200720"
 
-enum MCU_PACKAGE_TYPE : uint8_t
-{
-    H2M_GET_MCU_VERSION = 0x01,
+#define UART_HOST2MCU_MAX_SIZE (512)        // ËÆ°ÁÆóÊùøÂèëÈÄÅÂà∞ÊéßÂà∂ÊùøÊó∂ÊØèÊ¨°ÂÜôÂÖ•‰∏≤Âè£ËÆæÂ§áÁöÑÊúÄÂ§ßÊï∞ÊçÆÈáè
 
-    H2M_SET_SHUTDOWN       = 0x20,
-    H2M_SET_RESTART        = 0x21,
-    H2M_SET_DOMANT         = 0x22,
-    H2M_SET_WAKEUP         = 0x23,
-    H2M_SET_UPGRADE        = 0x24,
-    H2M_SET_MOTION         = 0x25,
-    H2M_SET_SYSTEM_PARAM   = 0x26,
-    H2M_SET_SPEED_PARAM    = 0x27,
-    H2M_SET_VIRTUAL_SENSOR = 0x28,
+#define UART_FRAME_MAGIC_NUMBER              (0xAAAA)
+#define UART_FRAME_SIZE_BEFORE_WITH_LENGTH   (4)
+#define UART_FRAME_SIZE_AFTER_LENGTH         (16)
+#define UART_FRAME_HEADER_SIZE               (UART_FRAME_SIZE_BEFORE_WITH_LENGTH + UART_FRAME_SIZE_AFTER_LENGTH)
+#define UART_FRAME_DATA_MAX_SIZE             (324)   // Á≠â‰∫ésizeof(UartMcu2HostLidarReg)
+#define UART_FRAME_MAX_SIZE                  (UART_FRAME_DATA_MAX_SIZE + UART_FRAME_HEADER_SIZE)
 
-    H2M_SET_DEBUG = 0x2F,
+#ifndef CHAR_BIT
+#define CHAR_BIT 8
+#endif
 
-    M2H_EMERGENCY_REG = 0xF0,
-    M2H_FAST_REG      = 0xF1,
-    M2H_SLOW_REG      = 0xF2,
-    M2H_DEBUG_REG     = 0xFF
-};
-
-enum VIRTUAL_COLLISION_TYPE : uint8_t
-{
-    VCT_LEFT_COLLISION  = 0,
-    VCT_RIGHT_COLLISION = 1,
-    VCT_TOF_COLLISION   = 2,
-    VCT_SLIP_ERROR      = 3,
-    VCT_CURRENT_ERROR   = 4
-};
+#define BITMASK(b) (1 << ((b) % CHAR_BIT))
+#define BITSLOT(b) ((b) / CHAR_BIT)
+#define BITSET(a, b) ((a)[BITSLOT(b)] |= BITMASK(b))
+#define BITCLEAR(a, b) ((a)[BITSLOT(b)] &= ~BITMASK(b))
+#define BITTEST(a, b) ((a)[BITSLOT(b)] & BITMASK(b))
+#define BITNSLOTS(nb) ((nb + CHAR_BIT - 1) / CHAR_BIT)
+#define BITLEN(a) (sizeof(a) / sizeof(char))
 
 #pragma pack(push, 1)
 
-enum SensorId
+// 0                   1                   2                   3
+// 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |          Magic Number         |            Length             |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |                              ID                               |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |               |     |F|F|D|A|N|                               |
+// |    Command    | Opt |G|R|U|C|A|        Sequence Number        |
+// |               |     |D|G|P|K|K|                               |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |      Acknowledgment Number    |  Shadow Acknowledgment Number |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |   Fragment Sequence Number    |            Checksum           |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |                             data                              |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+struct UartFrame
 {
-    COLLISION_ID = 0,
-    DROP_ID,
-    IR_ID,
-    PSD_ID,
-    IMU_ID,
-    ENCODER_ID,
-    OPTICAL_FLOW_ID,
-    MULTI_TOF_ID,
-    PICK_UP_ID,
-    LASER_ID,
-    CHARGER_IR_ID,
-    SENSOR_ID_END
+    uint16_t magic;         // Magic Number
+    uint16_t length;        // ÂåÖÈïø(lengthÂ≠óÊÆµ‰πãÂêéÁöÑÊâÄÊúâÈïøÂ∫¶)
+    uint32_t id;            // ID(Áî®‰∫éË∑üË∏™‰∏¢Â∏ßÁéá)
+    uint8_t  command;       // Command Type
+    uint8_t  options;       // need ACK, ACK, Duplicate, Fragment, Fragment done
+    uint16_t sn;            // Sequence Number
+    uint16_t ack;           // Acknowledgment Number
+    uint16_t sack;          // Shadow Acknowledgment Number
+    uint16_t frag_sn;       // Fragment Sequence Number
+    uint16_t checksum;      // Checksum
+    uint8_t  data[0];
 };
 
-//error status
-#define COLLISION_ERROR_STATUS     1<<COLLISION_ID
-#define DROP_ERROR_STATUS          1<<DROP_ID
-#define IR_ERROR_STATUS            1<<IR_ID
-#define PSD_ERROR_STATUS           1<<PSD_ID
-#define IMU_ERROR_STATUS           1<<IMU_ID
-#define ENCODER_ERROR_STATUS       1<<ENCODER_ID
-#define OPTICAL_FLOW_ERROR_STATUS  1<<OPTICAL_FLOW_ID
-#define MULTI_TOF_ERROR_STATUS     1<<MULTI_TOF_ID
-#define PICK_UP_ERROR_STATUS       1<<PICK_UP_ID
-
-enum MCU_MOTION_MODE : uint8_t
+// ÂçèËÆÆÂëΩ‰ª§Á±ªÂûã
+enum MCU_COMMAND_TYPE : uint8_t
 {
-    EMERGENCY_MODE = 0, //ΩÙº±ƒ£ Ω
-    SPEED_MODE,         //“£øÿƒ£ Ω
-    WALL_FOLLOW_MODE,   //—ÿ±ﬂƒ£ Ω
-    AUTO_CHARGE_MODE,    //◊‘∂Øªÿ≥‰
-    EXECUTE_MODE,        //÷¥––ƒ£ Ω
-    IDLE_MODE,            //ø’œ–
-    MCU_MOTION_MODE_NUM
+    MCT_H2M_MCU_FIRMWARE_VERSION = 0x01,    // Âõ∫‰ª∂ÁâàÊú¨Êü•ËØ¢
+    MCT_H2M_MCU_PROTOCOL_VERSION = 0x02,    // ÂçèËÆÆÁâàÊú¨Êü•ËØ¢
+
+    MCT_H2M_SHUTDOWN            = 0x20,     // ÂÖ≥Êú∫
+    MCT_H2M_RESTART             = 0x21,     // ÈáçÂêØ
+    MCT_H2M_SLEEP               = 0x22,     // ‰ºëÁú†
+    MCT_H2M_SET_FAN_MODE        = 0x23,     // ËÆæÁΩÆÈ£éÊú∫Ê®°Âºè
+    MCT_H2M_SET_EDGE_BRUSH_MODE = 0x24,     // ËÆæÁΩÆËæπÂà∑Ê®°Âºè
+    MCT_H2M_SET_LED_MODE        = 0x25,     // ËÆæÁΩÆLEDÊ®°Âºè
+    MCT_H2M_SET_MOTION          = 0x26,     // ËÆæÁΩÆËøêÂä®Ê®°Âºè
+    MCT_H2M_SET_SYSTEM_PARAM    = 0x27,     // ËÆæÁΩÆÁ≥ªÁªüÂèÇÊï∞
+    MCT_H2M_SET_SPEED_PARAM     = 0x28,     // ËÆæÁΩÆÈÅ•ÊéßÂèÇÊï∞
+    MCT_H2M_SET_VIRTUAL_SENSOR  = 0x29,     // ËôöÊãü‰º†ÊÑüÂô®
+
+    MCT_H2M_UPDATE_SLAM_POSE  = 0x30,       // ‰ΩçÂßøÊõ¥Êñ∞
+    MCT_H2M_SET_TOF_SENSOR    = 0x31,       // Â§ßToFÈöúÁ¢çÁâ©‰ø°ÊÅØ
+    MCT_H2M_CHARGER_INFO      = 0x32,       // ÂÖÖÁîµÂ∫ßËØÜÂà´‰ø°ÊÅØ
+    MCT_HEARTBEAT             = 0x33,       // ÂøÉË∑≥
+    MCT_H2M_SET_LIDAR_CAPTURE = 0x34,       // ËÆæÁΩÆÈõ∑ËææÈááÈõÜÊ®°Âºè
+    MCT_H2M_SET_TIMESTAMP     = 0x35,       // ËÆæÁΩÆÊó∂Èó¥Êà≥Ôºà‰ªé1970Âπ¥01Êúà01Êó•00Êó∂00ÂàÜ00ÁßíËµ∑Ëá≥Áé∞Âú®ÁöÑÊÄªÂæÆÁßíÊï∞Ôºâ
+
+    MCT_H2M_SET_DEBUG     = 0x41,           // ‰∏ãË°åDebugÈÄöÈÅì
+    MCT_H2M_DEBUG_COMMAND = 0x42,           // ‰∏ãË°åDebugÂëΩ‰ª§
+
+//    MCT_M2H_EMERGENCY_REG = 0xF0,         // Â∫îÊÄ•‰∏ä‰º†
+    MCT_M2H_FAST_REG  = 0xF1,               // Âø´ÂåÖ‰∏ä‰º†
+    MCT_M2H_SLOW_REG  = 0xF2,               // ÊÖ¢ÂåÖ‰∏ä‰º†
+    MCT_M2H_LIDAR_REG = 0xF3,               // Èõ∑ËææÊï∞ÊçÆ‰∏ä‰º†
+    MCT_M2H_EVENT_REG = 0xF4,               // ‰∫ã‰ª∂‰∏ä‰º†
+    MCT_M2H_DEBUG_REG = 0xFF                // ‰∏äË°åDebugÈÄöÈÅì
 };
 
-//“£øÿ◊”ƒ£ Ω
-enum SPEED_SUBMODE : uint8_t
+struct UartPose2D
 {
-    ENCODER_SPEED = 0,
-    ENCODER_POSITOIN,
-    IMU_SPEED,
-    IMU_POSITION,
-    LEFT_WHEEL_SPEED,
-    RIGHT_WHEEL_SPEED
+    float x    = 0;
+    float y    = 0;
+    float mPhi = 0;
 };
 
-//—ÿ±ﬂ◊”ƒ£ Ω
-enum WALL_FOLLOW_SUBMODE : uint8_t
+struct UartLidarUnit
 {
-    LEFT = 0,
-    RIGHT
+    UartPose2D sweeperPose;      // Èõ∑ËææÈááÊ†∑Êó∂ÁöÑÊâ´Âú∞Êú∫‰ΩçÂßø
+    int16_t    leftLidar  = 0;        // ÈááÊ†∑Êó∂ÁöÑÂ∑¶Èõ∑ËææÊï∞ÊçÆ
+    int16_t    rightLidar = 0;       // ÈááÊ†∑Êó∂ÁöÑÂè≥Èõ∑ËææÊï∞ÊçÆ
 };
 
-//÷˜∞¥º¸
-enum MAIN_KEY_STATE : uint8_t
+#define MCU_LIDAR_MAX_UNIT_SIZE (1000)
+#define MCU_LIDAR_MAX_SIZE (MCU_LIDAR_MAX_UNIT_SIZE * sizeof(UartLidarUnit))
+#define MCU_LIDAR_ONE_FRAME_MAX_UINT_SIZE (20)
+
+// MCT_M2H_LIDAR_REGÔºà‰∏äË°åÈõ∑ËææÊï∞ÊçÆÂåÖÔºâ
+struct UartMcu2HostLidarReg
 {
-    MKS_UP = 0,
-    MKS_DOWN
+    uint8_t       totalNo   = 0;           // ÊÄªÂÖ±ÊúâÂ§öÂ∞ë‰∏™ÂåÖ
+    uint8_t       currentNo = 0;         // ÂΩìÂâçÊòØÁ¨¨Âá†‰∏™ÂåÖÔºà‰ªé1ÂºÄÂßãËÆ°Êï∞Ôºâ
+    uint16_t      count     = 0;             // Èõ∑ËææÊï∞ÊçÆÁöÑunit‰∏™Êï∞
+    UartLidarUnit lidar[MCU_LIDAR_ONE_FRAME_MAX_UINT_SIZE];      // Èõ∑ËææÊï∞ÊçÆ
 };
-
-//‘À∂Ø”¶”√—°‘Ò÷∏¡Ó
-struct Host2McuMotionReg
+struct Mcu2HostLidarReg
 {
-    uint8_t mode    = SPEED_MODE;
-    uint8_t bEnable = 1;
-    uint8_t submode = IMU_SPEED;
-};
-
-//“£øÿ ˝æ›Õ®µ¿
-struct Host2McuSpeedParamReg
-{
-    int32_t v     = 0;      //œﬂÀŸ∂»
-    int32_t w     = 0;      //Ω«ÀŸ∂»
-    int32_t dis   = 0;    //æ‡¿Î
-    int32_t angle = 0;    //Ω«∂»
-    int32_t vAcc  = 1000;//œﬂº”ÀŸ∂»
-    int32_t wAcc  = 10000;//Ω«º”ÀŸ∂»
-};
-
-//–Èƒ‚¥´∏–∆˜ ˝æ›Õ®µ¿
-struct Host2McuSensorReg
-{
-    uint8_t bSlowDown      = 0;        //øøΩ¸’œ∞≠ŒÔºıÀŸ
-    uint8_t bCollision     = 0;        //≈ˆ◊≤
-    int16_t collisionAngle = 0; //≈ˆ◊≤Ω«∂»
-    int16_t leftPsdDis     = -1;    //◊Û–Èƒ‚—ÿ±ﬂæ‡¿Î
-    int16_t rightPsdDis    = -1;    //”“–Èƒ‚—ÿ±ﬂæ‡¿Î
-    int16_t curPsdPidP     = 0;        //µ±«∞—ÿ±ﬂæ‡¿ÎP
-    int16_t curPsdPidD     = 0;        //µ±«∞—ÿ±ﬂæ‡¿ÎD
-};
-
-//œ¬––debug ˝æ›Õ®µ¿
-struct Host2McuDebugReg
-{
-    uint32_t triggerBits           = ((1 << DEBUG_REG_SIZE) - 1);
-    int16_t  debug[DEBUG_REG_SIZE] = {0};
-};
-
-//10ms“ª∏ˆøÏ∞¸
-struct Mcu2HostFastReg
-{
-    //¿Ô≥Ãº∆ª˝∑÷¡ø
-    int32_t  opticalFlowX = 0;   //π‚¡˜x
-    int32_t  opticalFlowY = 0;   //π‚¡˜y
-    int32_t  leftPos      = 0;        //◊Û¬÷
-    int32_t  rightPos     = 0;       //”“¬÷
-    int32_t  yawPos       = 0;         //ÀÆ∆Ω√ÊΩ«∂»ª˝∑÷
-    //µ•µ„tof£¨psd
-    uint16_t psdLeft      = 0;
-    uint16_t psdRight     = 0;
-    uint16_t psdFront     = 0;
-    //µ◊≤„Ω‚À„µƒŒª◊À
-    int32_t  odoX         = 0;
-    int32_t  odoY         = 0;
-    int32_t  odoPhi       = 0;
-    //«„–±Ω«
-    int32_t  pitch        = 0;
-    int32_t  roll         = 0;
-    // µ≤‚ÀŸ∂»
-    int32_t  v            = 0;
-    int32_t  w            = 0;
-    //lidar tof
-    uint16_t lidarLeft    = {0};
-    uint16_t lidarRight   = {0};
-};
-
-//50ms“ª∏ˆ¬˝∞¸
-struct Mcu2HostSlowReg
-{
-    //µ◊≤„◊¥Ã¨ª˙
-    uint8_t motionMode    = 0;
-    uint8_t motionSubmode = 0;
-
-    //¥´∏–∆˜∑¥¿°
-    uint8_t  collision             = 0;
-    uint16_t ir                    = 0;
-    uint8_t  drop                  = 0;
-    uint16_t opticalCollisionAngle = 0; //◊Ó∏ﬂŒª±Ì æ «∑Ò”–π‚—ß≈ˆ◊≤
-    uint8_t  pickUpStatus          = 0;
-    uint8_t  chargeStatus          = 0;
-    uint32_t enableStatus          = (((uint64_t) 1 << 32) - 1);
-
-    //¥Úª¨ºÏ≤‚
-    uint8_t leftSlip  = 0;
-    uint8_t rightSlip = 0;
-
-    //¥ÌŒÛ¬Î∑¥¿°
-    uint32_t errorStatus = 0;
-
-    //∞¥≈•
-    MAIN_KEY_STATE key = MKS_UP;
-
-    uint8_t  currentStatus = 0;
-    uint32_t chargerIrInfo = 0;
-};
-
-struct Mcu2HostDebugReg
-{
-    int16_t debug[DEBUG_REG_SIZE] = {0};
+    uint16_t      count = 0;             // Èõ∑ËææÊï∞ÊçÆÁöÑunit‰∏™Êï∞
+    UartLidarUnit lidar[0];                 // Èõ∑ËææÊï∞ÊçÆ
 };
 
 #pragma pack(pop)

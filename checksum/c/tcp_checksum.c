@@ -31,10 +31,10 @@ static uint16_t chksum(void *dataptr, uint16_t len)
         acc += src;
     }
 
-    acc = (acc >> 16) + (acc & 0x0000ffffUL);
-    if ((acc & 0xffff0000UL) != 0)
+    acc = (acc >> 16) + (acc & 0x0000FFFFUL);
+    if ((acc & 0xFFFF0000UL) != 0)
     {
-        acc = (acc >> 16) + (acc & 0x0000ffffUL);
+        acc = (acc >> 16) + (acc & 0x0000FFFFUL);
     }
 
     src = (uint16_t) acc;

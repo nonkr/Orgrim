@@ -3,19 +3,24 @@
  * File: PrintUtil.h
  * Description: Print utils.
  * Author: songbinbin
- * Date: 2018/05/10
+ * Date: 2020/05/26
  * Changelog:
  *   v1.0 2018/05/10 first revision.
  *   v2.0 2018/07/06 remove colorful printf, use ALOG instead.
  *   v2.1 2018/07/17 add magic macro, FIRST_ARG and REST_ARGS.
  *   v2.2 2018/07/20 add printf macro for debug.
+ *   v2.3 2020/05/26 add __FILE__ and __LINE__.
  */
 
 #ifndef _PRINTUTIL_H_
 #define _PRINTUTIL_H_
 
 #include <cstdio>
+#include <cstring>
+#include <libgen.h>
 #include "log/log.h"
+
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #define COLORIZE_OUTPUT
 #define FR_PRINT_TO_ALOG
@@ -111,83 +116,83 @@
                     a51, a52, a53, a54, a55, a56, a57, a58, a59, a60, ...) a60
 
 #ifdef FR_PRINT_TO_ALOG
-#define FR_PRINT(tag, ...)                   ALOG(LOG_DEBUG, tag, FIRST_ARG(__VA_ARGS__) REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_RED(tag, ...)               ALOG(LOG_ERROR, tag, KRED FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_SALMON(tag, ...)            ALOG(LOG_DEBUG, tag, KSALMON FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_GREEN(tag, ...)             ALOG(LOG_DEBUG, tag, KGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_LIMEGREEN(tag, ...)         ALOG(LOG_DEBUG, tag, KLIMEGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_YELLOW(tag, ...)            ALOG(LOG_DEBUG, tag, KYELLOW FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_ORANGE(tag, ...)            ALOG(LOG_DEBUG, tag, KORANGE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_BLUE(tag, ...)              ALOG(LOG_DEBUG, tag, KBLUE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_MAGENTA(tag, ...)           ALOG(LOG_DEBUG, tag, KMAGENTA FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_PINK(tag, ...)              ALOG(LOG_DEBUG, tag, KPINK FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_CYAN(tag, ...)              ALOG(LOG_DEBUG, tag, KCYAN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG(tag, ...)                    ALOG(LOG_DEBUG, tag, FIRST_ARG(__VA_ARGS__) REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_RED(tag, ...)                ALOG(LOG_ERROR, tag, KRED FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_SALMON(tag, ...)             ALOG(LOG_DEBUG, tag, KSALMON FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_GREEN(tag, ...)              ALOG(LOG_DEBUG, tag, KGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_LIMEGREEN(tag, ...)          ALOG(LOG_DEBUG, tag, KLIMEGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_YELLOW(tag, ...)             ALOG(LOG_DEBUG, tag, KYELLOW FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_ORANGE(tag, ...)             ALOG(LOG_DEBUG, tag, KORANGE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_BLUE(tag, ...)               ALOG(LOG_DEBUG, tag, KBLUE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_MAGENTA(tag, ...)            ALOG(LOG_DEBUG, tag, KMAGENTA FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_PINK(tag, ...)               ALOG(LOG_DEBUG, tag, KPINK FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_ALOG_CYAN(tag, ...)               ALOG(LOG_DEBUG, tag, KCYAN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
+#define FR_PRINT(tag, ...)                   ALOG(LOG_DEBUG, tag, "[%s:%d] " FIRST_ARG(__VA_ARGS__) ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_RED(tag, ...)               ALOG(LOG_ERROR, tag, KRED "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_SALMON(tag, ...)            ALOG(LOG_DEBUG, tag, KSALMON "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_GREEN(tag, ...)             ALOG(LOG_DEBUG, tag, KGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_LIMEGREEN(tag, ...)         ALOG(LOG_DEBUG, tag, KLIMEGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_YELLOW(tag, ...)            ALOG(LOG_DEBUG, tag, KYELLOW "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_ORANGE(tag, ...)            ALOG(LOG_DEBUG, tag, KORANGE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_BLUE(tag, ...)              ALOG(LOG_DEBUG, tag, KBLUE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_MAGENTA(tag, ...)           ALOG(LOG_DEBUG, tag, KMAGENTA "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_PINK(tag, ...)              ALOG(LOG_DEBUG, tag, KPINK "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_CYAN(tag, ...)              ALOG(LOG_DEBUG, tag, KCYAN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG(tag, ...)                    ALOG(LOG_DEBUG, tag, "[%s:%d] " FIRST_ARG(__VA_ARGS__) ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_RED(tag, ...)                ALOG(LOG_ERROR, tag, KRED "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_SALMON(tag, ...)             ALOG(LOG_DEBUG, tag, KSALMON "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_GREEN(tag, ...)              ALOG(LOG_DEBUG, tag, KGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_LIMEGREEN(tag, ...)          ALOG(LOG_DEBUG, tag, KLIMEGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_YELLOW(tag, ...)             ALOG(LOG_DEBUG, tag, KYELLOW "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_ORANGE(tag, ...)             ALOG(LOG_DEBUG, tag, KORANGE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_BLUE(tag, ...)               ALOG(LOG_DEBUG, tag, KBLUE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_MAGENTA(tag, ...)            ALOG(LOG_DEBUG, tag, KMAGENTA "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_PINK(tag, ...)               ALOG(LOG_DEBUG, tag, KPINK "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_ALOG_CYAN(tag, ...)               ALOG(LOG_DEBUG, tag, KCYAN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
 #else
-#define FR_PRINT(tag, ...)                   printf(FIRST_ARG(__VA_ARGS__) REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_RED(tag, ...)               printf(KRED FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_SALMON(tag, ...)            printf(KSALMON FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_GREEN(tag, ...)             printf(KGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_LIMEGREEN(tag, ...)         printf(KLIMEGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_YELLOW(tag, ...)            printf(KYELLOW FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_ORANGE(tag, ...)            printf(KORANGE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_BLUE(tag, ...)              printf(KBLUE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_MAGENTA(tag, ...)           printf(KMAGENTA FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_PINK(tag, ...)              printf(KPINK FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
-#define FR_PRINT_CYAN(tag, ...)              printf(KCYAN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__))
+#define FR_PRINT(tag, ...)                   printf("[%s:%d] " FIRST_ARG(__VA_ARGS__) ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_RED(tag, ...)               printf(KRED "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_SALMON(tag, ...)            printf(KSALMON "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_GREEN(tag, ...)             printf(KGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_LIMEGREEN(tag, ...)         printf(KLIMEGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_YELLOW(tag, ...)            printf(KYELLOW "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_ORANGE(tag, ...)            printf(KORANGE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_BLUE(tag, ...)              printf(KBLUE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_MAGENTA(tag, ...)           printf(KMAGENTA "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_PINK(tag, ...)              printf(KPINK "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
+#define FR_PRINT_CYAN(tag, ...)              printf(KCYAN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__))
 #define FR_ALOG(tag, ...) do { \
-                    printf(FIRST_ARG(__VA_ARGS__) REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, FIRST_ARG(__VA_ARGS__) REST_ARGS(__VA_ARGS__)); \
+                    printf("[%s:%d] " FIRST_ARG(__VA_ARGS__) ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, "[%s:%d] " FIRST_ARG(__VA_ARGS__) ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_RED(tag, ...) do { \
-                    printf(KRED FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_ERROR, tag, KRED FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KRED "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_ERROR, tag, KRED "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_SALMON(tag, ...) do { \
-                    printf(KSALMON FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KSALMON FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KSALMON "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KSALMON "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_GREEN(tag, ...) do { \
-                    printf(KGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_LIMEGREEN(tag, ...) do { \
-                    printf(KLIMEGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KLIMEGREEN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KLIMEGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KLIMEGREEN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_YELLOW(tag, ...) do { \
-                    printf(KYELLOW FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KYELLOW FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KYELLOW "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KYELLOW "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_ORANGE(tag, ...) do { \
-                    printf(KORANGE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KORANGE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KORANGE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KORANGE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_BLUE(tag, ...) do { \
-                    printf(KBLUE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KBLUE FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KBLUE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KBLUE "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_MAGENTA(tag, ...) do { \
-                    printf(KMAGENTA FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KMAGENTA FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KMAGENTA "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KMAGENTA "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_PINK(tag, ...) do { \
-                    printf(KPINK FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KPINK FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KPINK "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KPINK "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #define FR_ALOG_CYAN(tag, ...) do { \
-                    printf(KCYAN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
-                    ALOG(LOG_DEBUG, tag, KCYAN FIRST_ARG(__VA_ARGS__) KRESET REST_ARGS(__VA_ARGS__)); \
+                    printf(KCYAN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
+                    ALOG(LOG_DEBUG, tag, KCYAN "[%s:%d] " FIRST_ARG(__VA_ARGS__) KRESET ,__FILENAME__,__LINE__ REST_ARGS(__VA_ARGS__)); \
                  } while(false);
 #endif
 
