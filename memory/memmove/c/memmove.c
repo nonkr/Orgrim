@@ -26,7 +26,7 @@ int main()
     printf("\n");
 
     memmove(str, str + 1, 3);
-    str[3] = 0x00;
+//    str[3] = 0x00;
 
     for (i = 0; i < 4; i++)
     {

@@ -1,9 +1,4 @@
-//
-// Created by songbinbin on 2019/8/21.
-//
-
-#ifndef __NET_SERVER_APP_H__
-#define __NET_SERVER_APP_H__
+#pragma once
 
 #include <cstdlib>
 
@@ -23,5 +18,3 @@ public:
 private:
     bool m_bStop = false;
 };
-
-#endif //__NET_SERVER_APP_H__

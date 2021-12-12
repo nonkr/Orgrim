@@ -119,6 +119,32 @@ public:
         return pthread_mutex_trylock(&m_mutex) == 0;
     }
 
+    bool trylockfor(int seconds)
+    {
+        struct timespec stCondTimeout;
+        clock_gettime(CLOCK_REALTIME, &stCondTimeout);
+        stCondTimeout.tv_sec += seconds;
+        int ret = pthread_mutex_timedlock(&m_mutex, &stCondTimeout);
+        return ret != ETIMEDOUT;
+    }
+
+    bool trylockforms(int ms)
+    {
+        struct timespec stCondTimeout;
+        clock_gettime(CLOCK_REALTIME, &stCondTimeout);
+        if ((long long) stCondTimeout.tv_nsec + ms * 1000000 >= 1000000000)
+        {
+            stCondTimeout.tv_sec += ((long long) stCondTimeout.tv_nsec + ms * 1000000) / 1000000000;
+            stCondTimeout.tv_nsec = ((long long) stCondTimeout.tv_nsec + ms * 1000000) % 1000000000;
+        }
+        else
+        {
+            stCondTimeout.tv_nsec += ms * 1000000;
+        }
+        int ret = pthread_mutex_timedlock(&m_mutex, &stCondTimeout);
+        return ret != ETIMEDOUT;
+    }
+
     /**
      * 释放互斥锁
      * @return bool - successful
@@ -219,7 +245,15 @@ public:
     {
         struct timespec stCondTimeout;
         clock_gettime(CLOCK_REALTIME, &stCondTimeout);
-        stCondTimeout.tv_nsec += ms * 1000000;
+        if ((long long) stCondTimeout.tv_nsec + ms * 1000000 >= 1000000000)
+        {
+            stCondTimeout.tv_sec += ((long long) stCondTimeout.tv_nsec + ms * 1000000) / 1000000000;
+            stCondTimeout.tv_nsec = ((long long) stCondTimeout.tv_nsec + ms * 1000000) % 1000000000;
+        }
+        else
+        {
+            stCondTimeout.tv_nsec += ms * 1000000;
+        }
         return pthread_cond_timedwait(&m_cond, &m_mutex, &stCondTimeout);
     }
 

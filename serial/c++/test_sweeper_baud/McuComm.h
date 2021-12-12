@@ -7,15 +7,7 @@
 
 namespace mcu_comm
 {
-	bool Init();
-	std::string GetMcuVertion();
-	bool SetShutdown(uint16_t timeDelayMs);
-	bool SetRestart(uint16_t timeDelayMs);
-	bool SetDormant(uint16_t timeDelayMs);
-	bool SetWakeup();
-	bool SetUpgrade();
-	bool SetMotionReg(const Host2McuMotionReg& motionReg);
-	bool SetSpeedParamReg(const Host2McuSpeedParamReg& speedReg);
-	bool SetSensorReg(const Host2McuSensorReg& sensorReg);
-	bool SetHostDebugReg(const Host2McuDebugReg& debugReg);
+    bool Init();
+
+    bool DeInit();
 }

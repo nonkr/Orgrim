@@ -39,14 +39,14 @@ int main(int argc, char *argv[])
     struct epoll_event event;    // 告诉内核要监听什么事件
     struct epoll_event wait_event;
 
-    int epfd = epoll_create(10); // 创建一个epoll的句柄，参数要大于0，自linux2.6.8之后，size参数是被忽略的
+    int epfd = epoll_create(1); // 创建一个epoll的句柄，参数要大于0，自linux2.6.8之后，size参数是被忽略的
     if (epfd == -1)
     {
         perror("epoll_create");
         return -1;
     }
 
-    event.data.fd = 0;       // 标准输入
+    event.data.fd = STDIN_FILENO;       // 标准输入
     event.events = EPOLLIN;  // 表示对应的文件描述符可以读
 
     // 事件注册函数，将标准输入描述符 STDIN_FILENO 加入监听事件
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
             char buf[100] = {0};
             if ((wait_event.data.fd == STDIN_FILENO) && (EPOLLIN == (wait_event.events & EPOLLIN)))
             {   // 标准输入
-                read(0, buf, sizeof(buf));
+                read(STDIN_FILENO, buf, sizeof(buf));
                 printf("stdin buf = %s\n", buf);
             }
             else if ((wait_event.data.fd == fd) && (EPOLLIN == (wait_event.events & EPOLLIN)))

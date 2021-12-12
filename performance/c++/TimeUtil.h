@@ -6,6 +6,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 using namespace std;
 using namespace chrono;
@@ -60,7 +61,33 @@ using namespace chrono;
                             system_clock::time_point now = system_clock::now(); \
                             auto duration = duration_cast<microseconds>(now - old); \
                             old = now; \
-                            FR_PRINT_MAGENTA("Time", "TDB %s: %f s\n", LABEL, double(duration.count()) * microseconds::period::num / microseconds::period::den); \
+                            printf("TDB %s: %f s\n", LABEL, double(duration.count()) * microseconds::period::num / microseconds::period::den); \
+                         } \
+                       } while (false)
+
+#define FR_DURATION_AVG(x, LABEL) do { \
+                         static int i##x = 0; \
+                         static double total##x = 0; \
+                         static int count##x = 0; \
+                         static double min##x = 999999999; \
+                         static double max##x = 0; \
+                         static system_clock::time_point old; \
+                         if (i##x == 0) \
+                         { \
+                            i##x = 1; \
+                            old = system_clock::now(); \
+                         } \
+                         else \
+                         { \
+                            system_clock::time_point now = system_clock::now(); \
+                            auto duration = duration_cast<microseconds>(now - old); \
+                            old = now; \
+                            count##x++; \
+                            double d = double(duration.count()) * microseconds::period::num / microseconds::period::den; \
+                            total##x += d; \
+                            if (d < min##x) min##x = d; \
+                            if (d > max##x) max##x = d; \
+                            printf("[%s] TDB %s: %f s, min: %f s, max: %f s, avg: %f s\n", TimeUtil::TimeNowStringMS().c_str(), LABEL, d, min##x, max##x, total##x / count##x); \
                          } \
                        } while (false)
 
@@ -84,6 +111,20 @@ public:
         string result(time_str);
 
         return result;
+    }
+
+    static std::string TimeNowStringMS()
+    {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        struct tm *pTime;
+        pTime = localtime(&tv.tv_sec);
+
+        char sTemp[32] = {0};
+        snprintf(sTemp, sizeof(sTemp), "%04d-%02d-%02d %02d:%02d:%02d.%06ld", pTime->tm_year + 1900,
+                 pTime->tm_mon + 1, pTime->tm_mday, pTime->tm_hour, pTime->tm_min, pTime->tm_sec,
+                 tv.tv_usec);
+        return (string) sTemp;
     }
 };
 

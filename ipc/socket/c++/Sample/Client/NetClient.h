@@ -1,16 +1,13 @@
-#ifndef __NETCLIENT_H__
-#define __NETCLIENT_H__
+#pragma once
 
 #include <pthread.h>
 #include <functional>
 #include "../Locker.h"
 
-#define TR_SERVER_PORT    (5401)
+typedef std::function<int(const char *, size_t)> fpi;
 
-typedef std::function<void(const char *, size_t)> fpi;
-
-#define SubscribeRecvHandle(srv, callback) \
-                        srv->SetRecvHandle(std::bind(callback, this, std::placeholders::_1, std::placeholders::_2));
+#define RegisterRecvHandle(srv, callback) \
+                        srv->SetRecvHandle(std::bind(callback, this, std::placeholders::_1, std::placeholders::_2))
 
 class NetClient
 {
@@ -33,7 +30,6 @@ private:
     int m_iSendBufferSize = 1024;
     int m_iRecvBufferSize = 1024;
 
-    bool      m_bStopClient     = false;
     int       m_iClientFD       = 0;
     bool      m_bStop           = false;
     pthread_t m_SendThreadID    = 0;
@@ -44,6 +40,13 @@ private:
     size_t m_SendBufferLen = 0;
     cond   m_condClientSend;
 
+    bool m_bDisconnected = true;
+    cond m_condReconnect;
+
+    static void *ConnectThread(void *arg);
+
+    void ConnectRoutine();
+
     static void *RecvThread(void *arg);
 
     void RecvRoutine();
@@ -52,5 +55,3 @@ private:
 
     void SendRoutine();
 };
-
-#endif // __NETCLIENT_H__

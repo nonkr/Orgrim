@@ -16,6 +16,9 @@
 #define FIRST_ARG(...) FIRST_ARG_HELPER(__VA_ARGS__, throwaway)
 #define FIRST_ARG_HELPER(first, ...) first
 
+#define TWO_ARG(...) TWO_ARG_HELPER(__VA_ARGS__, throwaway)
+#define TWO_ARG_HELPER(first, two, ...) first, two
+
 /*
  * if there's only one argument, expands to nothing.  if there is more
  * than one argument, expands to a comma followed by everything but

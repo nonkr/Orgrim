@@ -14,6 +14,8 @@
 
 #include <termios.h>
 #include <stdio.h>
+#include <memory.h>
+#include "../../utils/print_utils.h"
 
 __BEGIN_DECLS
 
@@ -137,6 +139,19 @@ static int set_Parity(int fd, int nDatabits, int nStopbits, char nParity)
         perror("tcgetattr");
         return -1;
     }
+
+//    reference: https://linux.die.net/man/3/cfmakeraw
+//    cfmakeraw() sets the terminal to something like the "raw" mode of the old Version 7 terminal driver: input is
+//    available character by character, echoing is disabled, and all special processing of terminal input and output
+//    characters is disabled. The terminal attributes are set as follows:
+//        termios_p->c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+//                                | INLCR | IGNCR | ICRNL | IXON);
+//        termios_p->c_oflag &= ~OPOST;
+//        termios_p->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+//        termios_p->c_cflag &= ~(CSIZE | PARENB);
+//        termios_p->c_cflag |= CS8;
+    cfmakeraw(&options);
+
     options.c_cflag &= ~CSIZE;
     switch (nDatabits)
     {
@@ -193,9 +208,6 @@ static int set_Parity(int fd, int nDatabits, int nStopbits, char nParity)
 
     options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); /*Input*/
     options.c_oflag &= ~OPOST;                          /*Output*/
-
-    // reference: https://linux.die.net/man/3/cfmakeraw
-    cfmakeraw(&options);
 
     /* Set input parity option */
     if (nParity != 'n')

@@ -27,7 +27,7 @@ void *dowork(void *threadid)
 
     tid = (long) threadid;
     pthread_attr_getstacksize(&attr, &mystacksize);
-    printf("Thread %ld: stack size = %li bytes \n", tid, mystacksize);
+    printf("Thread %ld: stack size = %zu bytes \n", tid, mystacksize);
     for (i = 0; i < N; i++)
         for (j = 0; j < N; j++)
             A[i][j] = ((i * j) / 3.452) + (N - i);
@@ -43,11 +43,11 @@ int main(int argc, char *argv[])
 
     pthread_attr_init(&attr);
     pthread_attr_getstacksize(&attr, &stacksize);
-    printf("Default stack size = %li\n", stacksize);
+    printf("Default stack size = %zu\n", stacksize);
     stacksize = sizeof(double) * N * N + MEGEXTRA;
-    printf("Amount of stack needed per thread = %li\n", stacksize);
+    printf("Amount of stack needed per thread = %zu\n", stacksize);
     pthread_attr_setstacksize(&attr, stacksize);
-    printf("Creating threads with stack size = %li bytes\n", stacksize);
+    printf("Creating threads with stack size = %zu bytes\n", stacksize);
     for (t = 0; t < NTHREADS; t++)
     {
         rc = pthread_create(&threads[t], &attr, dowork, (void *) t);

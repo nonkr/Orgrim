@@ -7,8 +7,6 @@
 
 int main()
 {
-    Host2McuSensorReg stHost2McuSensorReg = Host2McuSensorReg();
-
     mcu_comm::Init();
 
     while (true)

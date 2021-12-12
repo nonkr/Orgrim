@@ -267,6 +267,7 @@ void NetServer::SendRoutine()
 
     char   *pSendBuffer   = (char *) malloc(m_iSendBufferSize);
     size_t iSendBufferLen = 0;
+    size_t len            = 0;
 
     while (!m_bStopClient && m_iClientFD > 0)
     {
@@ -280,7 +281,12 @@ void NetServer::SendRoutine()
         m_SendBufferLen = 0;
         m_condClientSend.unlock();
 
-        write(m_iClientFD, pSendBuffer, iSendBufferLen);
+        len = write(m_iClientFD, pSendBuffer, iSendBufferLen);
+//        printf("len:%zu\n", len);
+        if (len < 0)
+        {
+            perror("send");
+        }
     }
 
     free(pSendBuffer);
@@ -293,7 +299,7 @@ void NetServer::SendRoutine()
 
 int NetServer::SendMessage(const char *pData, size_t nSize)
 {
-    if (m_iClientFD <= 0)
+    if (m_iClientFD <= 0 || m_bStopClient)
     {
         FR_PRINT_ORANGE("no client connected, can not send message\n");
         return 1;

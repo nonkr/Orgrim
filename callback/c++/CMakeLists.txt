@@ -11,3 +11,4 @@ endif ()
 
 add_executable(bind_simple bind_simple.cpp)
 add_executable(bind bind.cpp)
+add_executable(bind_class bind_class.cpp)

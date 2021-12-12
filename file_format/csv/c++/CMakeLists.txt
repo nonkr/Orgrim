@@ -13,3 +13,5 @@ endif ()
 
 add_executable(parse_csv test.cpp csv.cpp)
 add_executable(calculate_barometer_with_standard calculate_barometer_with_standard.cpp csv.cpp)
+add_executable(calculate_recharge_time_cost calculate_recharge_time_cost.cpp csv.cpp)
+add_executable(calculate_clean_duration calculate_clean_duration.cpp csv.cpp)

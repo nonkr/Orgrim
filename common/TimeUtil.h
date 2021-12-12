@@ -6,6 +6,8 @@
 #include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/time.h>
+
 #include "PrintUtil.h"
 
 using namespace std;
@@ -173,6 +175,20 @@ public:
         return hour * 60 * 60 + minute * 60 + second;
     }
 
+    static std::string TimeNowStringMS()
+    {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        struct tm *pTime;
+        pTime = localtime(&tv.tv_sec);
+
+        char sTemp[32] = {0};
+        snprintf(sTemp, sizeof(sTemp), "%04d-%02d-%02d %02d:%02d:%02d.%06ld", pTime->tm_year + 1900,
+                 pTime->tm_mon + 1, pTime->tm_mday, pTime->tm_hour, pTime->tm_min, pTime->tm_sec,
+                 tv.tv_usec);
+        return (string) sTemp;
+    }
+
     static std::string TimePointToString(std::chrono::system_clock::time_point &tp)
     {
         auto ttime_t = system_clock::to_time_t(tp);
@@ -192,7 +208,6 @@ public:
     {
         char buf[80] = {0};
         int  count;
-        int  ret     = 0;
 
         int fd = open(HIK_SYSTIME_PROC_PATH, O_RDONLY);
         if (fd < 0)
